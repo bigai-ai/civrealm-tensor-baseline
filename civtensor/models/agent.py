@@ -51,33 +51,50 @@ class Agent(nn.Module):
         self.n_lstm_layers = 2
 
         # initialize encoders
-        self.rules_encoder = nn.Linear(self.rules_dim, self.hidden_dim)
-
-        self.player_encoder = nn.Linear(self.player_dim, self.hidden_dim)
-
-        self.other_players_embedding = nn.Linear(
-            self.other_players_dim, self.hidden_dim
+        self.rules_encoder = nn.Sequential(
+            nn.Linear(self.rules_dim, self.hidden_dim), nn.ReLU()
         )
+
+        self.player_encoder = nn.Sequential(
+            nn.Linear(self.player_dim, self.hidden_dim), nn.ReLU()
+        )
+
+        self.other_players_embedding = nn.Sequential(
+            nn.Linear(self.other_players_dim, self.hidden_dim), nn.ReLU()
+        )
+
         self.other_players_encoder = TransformerEncoder(
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
-        self.units_embedding = nn.Linear(self.units_dim, self.hidden_dim)
+        self.units_embedding = nn.Sequential(
+            nn.Linear(self.units_dim, self.hidden_dim), nn.ReLU()
+        )
+
         self.units_encoder = TransformerEncoder(
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
-        self.cities_embedding = nn.Linear(self.cities_dim, self.hidden_dim)
+        self.cities_embedding = nn.Sequential(
+            nn.Linear(self.cities_dim, self.hidden_dim), nn.ReLU()
+        )
+
         self.cities_encoder = TransformerEncoder(
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
-        self.other_units_embedding = nn.Linear(self.other_units_dim, self.hidden_dim)
+        self.other_units_embedding = nn.Sequential(
+            nn.Linear(self.other_units_dim, self.hidden_dim), nn.ReLU()
+        )
+
         self.other_units_encoder = TransformerEncoder(
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
-        self.other_cities_embedding = nn.Linear(self.other_cities_dim, self.hidden_dim)
+        self.other_cities_embedding = nn.Sequential(
+            nn.Linear(self.other_cities_dim, self.hidden_dim), nn.ReLU()
+        )
+
         self.other_cities_encoder = TransformerEncoder(
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
