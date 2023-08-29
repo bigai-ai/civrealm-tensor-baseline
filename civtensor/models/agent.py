@@ -12,35 +12,35 @@ class Agent(nn.Module):
     It outputs actions, action_log_probs, and values given states and available_actions.
     """
 
-    def __init__(self, args, state_space, action_space, device=torch.device("cpu")):
+    def __init__(self, args, state_spaces, action_spaces, device=torch.device("cpu")):
         super(Agent, self).__init__()
         self.args = args
-        self.state_space = state_space
-        self.action_space = action_space
+        self.state_spaces = state_spaces
+        self.action_spaces = action_spaces
         self.device = device
 
         self.init_network(args)
 
     def init_network(self, args):
-        # obtain input dimensions. TODO: list the numbers.
-        self.rules_dim = self.state_space["rules"].shape[0]
-        self.player_dim = self.state_space["player"].shape[0]
-        self.other_players_dim = self.state_space["other_players"].shape[
-            0
+        # obtain input dimensions. TODO: be consistent with env
+        self.rules_dim = self.state_spaces["rules"].shape[1]
+        self.player_dim = self.state_spaces["player"].shape[1]
+        self.other_players_dim = self.state_spaces["other_players"].shape[
+            1
         ]  # or Sequence?
-        self.units_dim = self.state_space["units"].shape[0]  # or Sequence?
-        self.cities_dim = self.state_space["cities"].shape[0]  # or Sequence?
-        self.other_units_dim = self.state_space["other_units"].shape[0]  # or Sequence?
-        self.other_cities_dim = self.state_space["other_cities"].shape[
-            0
+        self.units_dim = self.state_spaces["units"].shape[1]  # or Sequence?
+        self.cities_dim = self.state_spaces["cities"].shape[1]  # or Sequence?
+        self.other_units_dim = self.state_spaces["other_units"].shape[1]  # or Sequence?
+        self.other_cities_dim = self.state_spaces["other_cities"].shape[
+            1
         ]  # or Sequence?
-        self.map_dim = self.state_space["map"].shape
+        self.map_dim = self.state_spaces["map"].shape
 
-        # obtain output dimensions. TODO: list the numbers.
-        self.actor_type_dim = self.action_space["actor_type"].n
-        self.city_action_type_dim = self.action_space["city_action_type"].n
-        self.unit_action_type_dim = self.action_space["unit_action_type"].n
-        self.gov_action_type_dim = self.action_space["gov_action_type"].n
+        # obtain output dimensions. TODO: be consistent with env
+        self.actor_type_dim = self.action_spaces["actor_type"].n
+        self.city_action_type_dim = self.action_spaces["city_action_type"].n
+        self.unit_action_type_dim = self.action_spaces["unit_action_type"].n
+        self.gov_action_type_dim = self.action_spaces["gov_action_type"].n
 
         # obtain hidden dimensions
         self.hidden_dim = args["hidden_dim"]  # 256
@@ -150,10 +150,10 @@ class Agent(nn.Module):
         )
         self.gov_action_softmax = nn.Softmax(dim=-1)
 
-    def forward(self, states, lstm_hidden_states, masks):
+    def forward(self, states, lstm_hidden_state, masks):
         """
         Args:
-            lstm_hidden_states: (h, c) where h and c are (n_lstm_layers, batch_size, lstm_hidden_dim)
+            lstm_hidden_state: (h, c) where h and c are (n_lstm_layers, batch_size, lstm_hidden_dim)
         """
         # obtain states
         rules = states["rules"]  # (batch_size, rules_dim)
@@ -300,9 +300,9 @@ class Agent(nn.Module):
         )  # (batch_size, 8 * hidden_dim)
 
         # TODO: add training logic; we may need to extract this into a separate class
-        # lstm_hidden_states: (h, c) where h and c are (n_lstm_layers, batch_size, lstm_hidden_dim)
-        lstm_out, lstm_hidden_states = self.lstm(
-            global_encoding_concat.unsqueeze(0), lstm_hidden_states
+        # lstm_hidden_state: (h, c) where h and c are (n_lstm_layers, batch_size, lstm_hidden_dim)
+        lstm_out, lstm_hidden_state = self.lstm(
+            global_encoding_concat.unsqueeze(0), lstm_hidden_state
         )  # (1, batch_size, lstm_hidden_dim), ((n_lstm_layers, batch_size, lstm_hidden_dim), (n_lstm_layers, batch_size, lstm_hidden_dim))
         lstm_out = lstm_out.squeeze(0)  # (batch_size, lstm_hidden_dim)
 
@@ -322,7 +322,7 @@ class Agent(nn.Module):
         actor_type_id = actor_distribution.sample()  # (batch_size, 1)
 
         # city id head
-        city_ids, city_chosen_encoded = self.city_id_head(
+        city_id, city_chosen_encoded = self.city_id_head(
             lstm_out, cities_encoded, city_id_mask
         )  # (batch_size, 1), (batch_size, hidden_dim)
 
@@ -337,7 +337,7 @@ class Agent(nn.Module):
         city_action_type_id = city_action_distribution.sample()  # (batch_size, 1)
 
         # unit id head
-        unit_ids, unit_chosen_encoded = self.unit_id_head(
+        unit_id, unit_chosen_encoded = self.unit_id_head(
             lstm_out, units_encoded, unit_id_mask
         )  # (batch_size, 1), (batch_size, hidden_dim)
 
@@ -362,11 +362,11 @@ class Agent(nn.Module):
 
         return (
             actor_type_id,
-            city_ids,
+            city_id,
             city_action_type_id,
-            unit_ids,
+            unit_id,
             unit_action_type_id,
             gov_action_type_id,
             value_predictions,
-            lstm_hidden_states,
+            lstm_hidden_state,
         )
