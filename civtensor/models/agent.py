@@ -367,5 +367,6 @@ class Agent(nn.Module):
             unit_ids,
             unit_action_type_id,
             gov_action_type_id,
+            value_predictions,
             lstm_hidden_states,
         )
