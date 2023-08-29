@@ -119,10 +119,13 @@ class Agent(nn.Module):
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
-        # initialize lstm. TODO: LSTMCell?
+        # initialize lstm.
         self.lstm = nn.LSTM(
             8 * self.hidden_dim, self.lstm_hidden_dim, self.n_lstm_layers
         )
+
+        # initialize value head
+        self.value_linear = nn.Linear(self.lstm_hidden_dim, 1)
 
         # initialize actor heads
         self.actor_type_linear = nn.Linear(self.lstm_hidden_dim, self.actor_type_dim)
@@ -302,6 +305,9 @@ class Agent(nn.Module):
             global_encoding_concat.unsqueeze(0), lstm_hidden_states
         )  # (1, batch_size, lstm_hidden_dim), ((n_lstm_layers, batch_size, lstm_hidden_dim), (n_lstm_layers, batch_size, lstm_hidden_dim))
         lstm_out = lstm_out.squeeze(0)  # (batch_size, lstm_hidden_dim)
+
+        # output value predictions
+        value_predictions = self.value_linear(lstm_out)  # (batch_size, 1)
 
         # action step
         # actor type head
