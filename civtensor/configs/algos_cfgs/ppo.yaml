@@ -43,6 +43,18 @@ render:
   # number of episodes to render
   render_episodes: 10
 model:
+  # hidden dimension
+  hidden_dim: 256
+  # hidden dimension for LSTM
+  lstm_hidden_dim: 1024
+  # number of heads in transformer
+  n_head: 2
+  # number of layers in transformer
+  n_layers: 2
+  # dropout probability
+  drop_prob: 0
+  # number of lstm layers
+  n_lstm_layers: 2
   # length of data chunk; only useful when use_recurrent_policy is True; episode_length has to be a multiple of data_chunk_length
   data_chunk_length: 10
   # actor learning rate
