@@ -21,6 +21,8 @@ class Agent(nn.Module):
 
         self.init_network(args)
 
+        self.to(device)
+
     def init_network(self, args):
         # obtain input dimensions. TODO: be consistent with env
         self.rules_dim = self.state_spaces["rules"].shape[1]
@@ -190,10 +192,10 @@ class Agent(nn.Module):
         unit_id_mask = masks["unit_id"]  # (batch_size, n_max_units, 1)
         city_action_type_mask = masks[
             "city_action_type"
-        ]  # (batch_size, city_action_type_dim)
+        ]  # (batch_size, n_max_cities, city_action_type_dim)
         unit_action_type_mask = masks[
             "unit_action_type"
-        ]  # (batch_size, unit_action_type_dim)
+        ]  # (batch_size, n_max_units, unit_action_type_dim)
         gov_action_type_mask = masks[
             "gov_action_type"
         ]  # (batch_size, gov_action_type_dim)
@@ -329,8 +331,11 @@ class Agent(nn.Module):
         # city action type head
         city_action_input = torch.cat([lstm_out, city_chosen_encoded], dim=-1)
         city_action_logits = self.city_action_linear(city_action_input)
+        chosen_city_action_type_mask = city_action_type_mask[
+            torch.arange(batch_size), city_id.squeeze(), :
+        ]
         city_action_logits = city_action_logits.masked_fill(
-            city_action_type_mask == 0, -10000
+            chosen_city_action_type_mask == 0, -10000
         )
         city_action_type = self.city_action_softmax(city_action_logits)
         city_action_distribution = Categorical(city_action_type)
@@ -344,8 +349,11 @@ class Agent(nn.Module):
         # unit action type head
         unit_action_input = torch.cat([lstm_out, unit_chosen_encoded], dim=-1)
         unit_action_logits = self.unit_action_linear(unit_action_input)
+        chosen_unit_action_type_mask = unit_action_type_mask[
+            torch.arange(batch_size), unit_id.squeeze(), :
+        ]
         unit_action_logits = unit_action_logits.masked_fill(
-            unit_action_type_mask == 0, -10000
+            chosen_unit_action_type_mask == 0, -10000
         )
         unit_action_type = self.unit_action_softmax(unit_action_logits)
         unit_action_distribution = Categorical(unit_action_type)
