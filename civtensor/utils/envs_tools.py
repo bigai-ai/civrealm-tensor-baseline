@@ -1,5 +1,14 @@
+import numpy as np
+import torch
+
 from civtensor.envs.env_wrappers import ShareSubprocVecEnv, ShareDummyVecEnv
 from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import FreecivTensorEnv
+
+
+def check(value):
+    """Check if value is a numpy array, if so, convert it to a torch tensor."""
+    output = torch.from_numpy(value) if isinstance(value, np.ndarray) else value
+    return output
 
 
 def make_train_env(seed, n_threads, env_args):

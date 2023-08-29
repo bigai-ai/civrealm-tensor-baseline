@@ -333,7 +333,7 @@ class Agent(nn.Module):
         city_action_logits = self.city_action_linear(city_action_input)
         chosen_city_action_type_mask = city_action_type_mask[
             torch.arange(batch_size), city_id.squeeze(), :
-        ]
+        ]  # TODO: check whether gradient is correct
         city_action_logits = city_action_logits.masked_fill(
             chosen_city_action_type_mask == 0, -10000
         )
@@ -351,7 +351,7 @@ class Agent(nn.Module):
         unit_action_logits = self.unit_action_linear(unit_action_input)
         chosen_unit_action_type_mask = unit_action_type_mask[
             torch.arange(batch_size), unit_id.squeeze(), :
-        ]
+        ]  # TODO: check whether gradient is correct
         unit_action_logits = unit_action_logits.masked_fill(
             chosen_unit_action_type_mask == 0, -10000
         )

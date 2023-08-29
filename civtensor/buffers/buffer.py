@@ -1,6 +1,7 @@
 import numpy as np
 import torch
-from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
+
+from civtensor.utils.trans_tools import _flatten
 
 
 def _flatten_helper(T, N, _tensor):
@@ -399,54 +400,98 @@ class Buffer:
         # shuffle indices
         perm = torch.randperm(n_rollout_threads).numpy()
 
+        T, N = self.episode_length, num_envs_per_batch
+
         # prepare data for each mini batch
-        for start_ind in range(0, n_rollout_threads, num_envs_per_batch):
-            obs_batch = []
-            recurrent_hidden_states_batch = []
-            actions_batch = []
-            value_preds_batch = []
-            return_batch = []
-            masks_batch = []
-            old_action_log_probs_batch = []
-            adv_targ = []
-
-            for offset in range(num_envs_per_batch):
-                ind = perm[start_ind + offset]
-                obs_batch.append(self.obs[:-1, ind])
-                recurrent_hidden_states_batch.append(
-                    self.recurrent_hidden_states[0:1, ind]
-                )
-                actions_batch.append(self.actions[:, ind])
-                value_preds_batch.append(self.value_preds[:-1, ind])
-                return_batch.append(self.returns[:-1, ind])
-                masks_batch.append(self.masks[:-1, ind])
-                old_action_log_probs_batch.append(self.action_log_probs[:, ind])
-                adv_targ.append(advantages[:, ind])
-
-            T, N = self.num_steps, num_envs_per_batch
-            # These are all tensors of size (T, N, -1)
-            obs_batch = torch.stack(obs_batch, 1)
-            actions_batch = torch.stack(actions_batch, 1)
-            value_preds_batch = torch.stack(value_preds_batch, 1)
-            return_batch = torch.stack(return_batch, 1)
-            masks_batch = torch.stack(masks_batch, 1)
-            old_action_log_probs_batch = torch.stack(old_action_log_probs_batch, 1)
-            adv_targ = torch.stack(adv_targ, 1)
-
-            # States is just a (N, -1) tensor
-            recurrent_hidden_states_batch = torch.stack(
-                recurrent_hidden_states_batch, 1
-            ).view(N, -1)
-
-            # Flatten the (T, N, ...) tensors to (T * N, ...)
-            obs_batch = _flatten_helper(T, N, obs_batch)
-            actions_batch = _flatten_helper(T, N, actions_batch)
-            value_preds_batch = _flatten_helper(T, N, value_preds_batch)
-            return_batch = _flatten_helper(T, N, return_batch)
-            masks_batch = _flatten_helper(T, N, masks_batch)
-            old_action_log_probs_batch = _flatten_helper(
-                T, N, old_action_log_probs_batch
+        for batch_id in range(num_mini_batch):
+            start_id = batch_id * num_envs_per_batch
+            ids = perm[start_id : start_id + num_envs_per_batch]
+            rules_batch = _flatten(self.rules_input[:-1, ids])
+            player_batch = _flatten(self.player_input[:-1, ids])
+            other_players_batch = _flatten(self.other_players_input[:-1, ids])
+            units_batch = _flatten(self.units_input[:-1, ids])
+            cities_batch = _flatten(self.cities_input[:-1, ids])
+            other_units_batch = _flatten(self.other_units_input[:-1, ids])
+            other_cities_batch = _flatten(self.other_cities_input[:-1, ids])
+            map_batch = _flatten(self.map_input[:-1, ids])
+            other_players_masks_batch = _flatten(self.other_players_masks[:-1, ids])
+            units_masks_batch = _flatten(self.units_masks[:-1, ids])
+            cities_masks_batch = _flatten(self.cities_masks[:-1, ids])
+            other_units_masks_batch = _flatten(self.other_units_masks[:-1, ids])
+            other_cities_masks_batch = _flatten(self.other_cities_masks[:-1, ids])
+            lstm_hidden_states_batch = self.lstm_hidden_states[0:1, ids]
+            value_preds_batch = _flatten(self.value_preds[:-1, ids])
+            return_batch = _flatten(self.returns[:-1, ids])
+            adv_targ = _flatten(advantages[:-1, ids])
+            actor_type_batch = _flatten(self.actor_type_output[:, ids])
+            actor_type_log_probs_batch = _flatten(self.actor_type_log_probs[:, ids])
+            actor_type_masks_batch = _flatten(self.actor_type_masks[:-1, ids])
+            city_id_batch = _flatten(self.city_id_output[:, ids])
+            city_id_log_probs_batch = _flatten(self.city_id_log_probs[:, ids])
+            city_id_masks_batch = _flatten(self.city_id_masks[:-1, ids])
+            city_action_type_batch = _flatten(self.city_action_type_output[:, ids])
+            city_action_type_log_probs_batch = _flatten(
+                self.city_action_type_log_probs[:, ids]
             )
-            adv_targ = _flatten_helper(T, N, adv_targ)
+            city_action_type_masks_batch = _flatten(
+                self.city_action_type_masks[:-1, ids]
+            )
+            unit_id_batch = _flatten(self.unit_id_output[:, ids])
+            unit_id_log_probs_batch = _flatten(self.unit_id_log_probs[:, ids])
+            unit_id_masks_batch = _flatten(self.unit_id_masks[:-1, ids])
+            unit_action_type_batch = _flatten(self.unit_action_type_output[:, ids])
+            unit_action_type_log_probs_batch = _flatten(
+                self.unit_action_type_log_probs[:, ids]
+            )
+            unit_action_type_masks_batch = _flatten(
+                self.unit_action_type_masks[:-1, ids]
+            )
+            gov_action_type_batch = _flatten(self.gov_action_type_output[:, ids])
+            gov_action_type_log_probs_batch = _flatten(
+                self.gov_action_type_log_probs[:, ids]
+            )
+            gov_action_type_masks_batch = _flatten(self.gov_action_type_masks[:-1, ids])
+            masks_batch = _flatten(self.masks[:-1, ids])
+            bad_masks_batch = _flatten(self.bad_masks[:-1, ids])
 
-            yield obs_batch, recurrent_hidden_states_batch, actions_batch, value_preds_batch, return_batch, masks_batch, old_action_log_probs_batch, adv_targ
+            lstm_hidden_states_batch = lstm_hidden_states_batch.squeeze(0)
+
+            yield (
+                rules_batch,
+                player_batch,
+                other_players_batch,
+                units_batch,
+                cities_batch,
+                other_units_batch,
+                other_cities_batch,
+                map_batch,
+                other_players_masks_batch,
+                units_masks_batch,
+                cities_masks_batch,
+                other_units_masks_batch,
+                other_cities_masks_batch,
+                lstm_hidden_states_batch,
+                value_preds_batch,
+                return_batch,
+                adv_targ,
+                actor_type_batch,
+                actor_type_log_probs_batch,
+                actor_type_masks_batch,
+                city_id_batch,
+                city_id_log_probs_batch,
+                city_id_masks_batch,
+                city_action_type_batch,
+                city_action_type_log_probs_batch,
+                city_action_type_masks_batch,
+                unit_id_batch,
+                unit_id_log_probs_batch,
+                unit_id_masks_batch,
+                unit_action_type_batch,
+                unit_action_type_log_probs_batch,
+                unit_action_type_masks_batch,
+                gov_action_type_batch,
+                gov_action_type_log_probs_batch,
+                gov_action_type_masks_batch,
+                masks_batch,
+                bad_masks_batch,
+            )
