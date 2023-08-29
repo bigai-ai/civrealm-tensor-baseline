@@ -19,9 +19,9 @@ class Agent(nn.Module):
         self.action_space = action_space
         self.device = device
 
-        self.init_network()
+        self.init_network(args)
 
-    def init_network(self):
+    def init_network(self, args):
         # obtain input dimensions. TODO: list the numbers.
         self.rules_dim = self.state_space["rules"].shape[0]
         self.player_dim = self.state_space["player"].shape[0]
@@ -43,12 +43,12 @@ class Agent(nn.Module):
         self.gov_action_type_dim = self.action_space["gov_action_type"].n
 
         # obtain hidden dimensions
-        self.hidden_dim = 256
-        self.lstm_hidden_dim = 1024
-        self.n_head = 2
-        self.n_layers = 2
-        self.drop_prob = 0
-        self.n_lstm_layers = 2
+        self.hidden_dim = args["hidden_dim"]  # 256
+        self.lstm_hidden_dim = args["lstm_hidden_dim"]  # 1024
+        self.n_head = args["n_head"]  # 2
+        self.n_layers = args["n_layers"]  # 2
+        self.drop_prob = args["drop_prob"]  # 0
+        self.n_lstm_layers = args["n_lstm_layers"]  # 2
 
         # initialize encoders
         self.rules_encoder = nn.Sequential(
