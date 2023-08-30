@@ -1,5 +1,6 @@
 import setproctitle
 
+import numpy as np
 import torch
 
 from civtensor.algorithms.ppo import PPO
@@ -41,7 +42,7 @@ class Runner:
             algo_args["train"]["n_rollout_threads"],
             env_args,
         )
-        self.envs = (
+        self.eval_envs = (
             make_eval_env(
                 args["env"],
                 algo_args["seed"]["seed"],
@@ -114,6 +115,8 @@ class Runner:
                     unit_action_type_log_prob,
                     gov_action_type,
                     gov_action_type_log_prob,
+                    value_pred,
+                    lstm_hidden_state,
                 ) = self.collect(step)
 
                 (
@@ -139,7 +142,95 @@ class Runner:
                     reward,
                     term,
                     trunc,
-                ) = self.envs.reset()  # no info at the moment
+                ) = self.envs.step(
+                    actor_type,
+                    city_id,
+                    city_action_type,
+                    unit_id,
+                    unit_action_type,
+                    gov_action_type,
+                )  # no info at the moment
+
+                # mask: 1 if not done, 0 if done
+                done = np.logical_or(term, trunc)  # (n_rollout_threads, 1)
+                mask = np.logical_not(done)  # (n_rollout_threads, 1)
+
+                # bad_mask use 0 to denote truncation and 1 to denote termination or not done
+                bad_mask = np.logical_not(trunc)
+
+                # reset certain lstm hidden state
+                done_env = done.squeeze(1)
+                lstm_hidden_state[done_env == True] = np.zeros(
+                    (
+                        (done_env == True).sum(),
+                        self.n_lstm_layers,
+                        self.lstm_hidden_dim,
+                    )
+                )
+
+                data = (
+                    rules,
+                    player,
+                    other_players,
+                    units,
+                    cities,
+                    other_units,
+                    other_cities,
+                    map,
+                    other_players_mask,
+                    units_mask,
+                    cities_mask,
+                    other_units_mask,
+                    other_cities_mask,
+                    lstm_hidden_state,
+                    actor_type,
+                    actor_type_log_prob,
+                    actor_type_mask,
+                    city_id,
+                    city_id_log_prob,
+                    city_id_mask,
+                    city_action_type,
+                    city_action_type_log_prob,
+                    city_action_type_mask,
+                    unit_id,
+                    unit_id_log_prob,
+                    unit_id_mask,
+                    unit_action_type,
+                    unit_action_type_log_prob,
+                    unit_action_type_mask,
+                    gov_action_type,
+                    gov_action_type_log_prob,
+                    gov_action_type_mask,
+                    mask,
+                    bad_mask,
+                    reward,
+                    value_pred,
+                )
+
+                self.buffer.insert(data)
+
+                self.logger.per_step(data)
+
+            self.compute()
+            self.prep_training()
+
+            train_info = self.train()
+
+            # log information
+            if episode % self.algo_args["train"]["log_interval"] == 0:
+                self.logger.episode_log(
+                    train_info,
+                    self.buffer,
+                )
+
+            # eval
+            if episode % self.algo_args["train"]["eval_interval"] == 0:
+                if self.algo_args["eval"]["use_eval"]:
+                    self.prep_rollout()
+                    self.eval()
+                self.save()
+
+            self.after_update()
 
     def warmup(self):
         (
@@ -183,9 +274,43 @@ class Runner:
         self.buffer.unit_action_type_masks[0] = unit_action_type_mask.copy()
         self.buffer.gov_action_type_masks[0] = gov_action_type_mask.copy()
 
+    @torch.no_grad()
+    def collect(self, step):
+        return self.algo.agent(
+            self.buffer.rules_input[step],
+            self.buffer.player_input[step],
+            self.buffer.other_players_input[step],
+            self.buffer.units_input[step],
+            self.buffer.cities_input[step],
+            self.buffer.other_units_input[step],
+            self.buffer.other_cities_input[step],
+            self.buffer.map_input[step],
+            self.buffer.other_players_masks[step],
+            self.buffer.units_masks[step],
+            self.buffer.cities_masks[step],
+            self.buffer.other_units_masks[step],
+            self.buffer.other_cities_masks[step],
+            self.buffer.actor_type_masks[step],
+            self.buffer.city_id_masks[step],
+            self.buffer.city_action_type_masks[step],
+            self.buffer.unit_id_masks[step],
+            self.buffer.unit_action_type_masks[step],
+            self.buffer.gov_action_type_masks[step],
+            self.buffer.lstm_hidden_states[step],  # use previous lstm hidden state
+            deterministic=False,
+        )
+
+    @torch.no_grad()
+    def compute(self):
+        raise NotImplementedError
+
+    def after_update(self):
+        self.buffer.after_update()
+
     def train(self):
         raise NotImplementedError
 
+    @torch.no_grad()
     def eval(self):
         raise NotImplementedError
 
@@ -220,4 +345,9 @@ class Runner:
             self.value_normalizer.load_state_dict(value_normalizer_state_dict)
 
     def close(self):
-        raise NotImplementedError
+        self.envs.close()
+        if self.eval_envs is not None:
+            self.eval_envs.close()
+        self.writter.export_scalars_to_json(str(self.log_dir + "/summary.json"))
+        self.writter.close()
+        self.logger.close()

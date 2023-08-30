@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from torch.distributions import Categorical
 
+from civtensor.models.base.distributions import Categorical
 from civtensor.models.encoder.transformer_encoder import TransformerEncoder
 from civtensor.models.pointer_network.pointer_network import PointerNetwork
 
@@ -18,6 +18,9 @@ class Agent(nn.Module):
         self.state_spaces = state_spaces
         self.action_spaces = action_spaces
         self.device = device
+
+        self.gain = args["gain"]
+        self.initialization_method = args["initialization_method"]
 
         self.init_network(args)
 
@@ -130,75 +133,89 @@ class Agent(nn.Module):
         self.value_linear = nn.Linear(self.lstm_hidden_dim, 1)
 
         # initialize actor heads
-        self.actor_type_linear = nn.Linear(self.lstm_hidden_dim, self.actor_type_dim)
-        self.actor_type_softmax = nn.Softmax(dim=-1)
+        self.actor_type_head = Categorical(
+            self.lstm_hidden_dim,
+            self.actor_type_dim,
+            self.initialization_method,
+            self.gain,
+        )
 
         self.city_id_head = PointerNetwork(self.hidden_dim, self.lstm_hidden_dim)
 
         self.unit_id_head = PointerNetwork(self.hidden_dim, self.lstm_hidden_dim)
 
-        self.city_action_linear = nn.Linear(
-            self.lstm_hidden_dim + self.hidden_dim, self.city_action_type_dim
+        self.city_action_head = Categorical(
+            self.lstm_hidden_dim + self.hidden_dim,
+            self.city_action_type_dim,
+            self.initialization_method,
+            self.gain,
         )
-        self.city_action_softmax = nn.Softmax(dim=-1)
 
-        self.unit_action_linear = nn.Linear(
-            self.lstm_hidden_dim + self.hidden_dim, self.unit_action_type_dim
+        self.unit_action_head = Categorical(
+            self.lstm_hidden_dim + self.hidden_dim,
+            self.unit_action_type_dim,
+            self.initialization_method,
+            self.gain,
         )
-        self.unit_action_softmax = nn.Softmax(dim=-1)
 
-        self.gov_action_linear = nn.Linear(
-            self.lstm_hidden_dim, self.gov_action_type_dim
+        self.gov_action_head = Categorical(
+            self.lstm_hidden_dim,
+            self.gov_action_type_dim,
+            self.initialization_method,
+            self.gain,
         )
-        self.gov_action_softmax = nn.Softmax(dim=-1)
 
-    def forward(self, states, lstm_hidden_state, masks):
+    def forward(
+        self,
+        rules,
+        player,
+        other_players,
+        units,
+        cities,
+        other_units,
+        other_cities,
+        map,
+        other_players_mask,
+        units_mask,
+        cities_mask,
+        other_units_mask,
+        other_cities_mask,
+        actor_type_mask,
+        city_id_mask,
+        city_action_type_mask,
+        unit_id_mask,
+        unit_action_type_mask,
+        gov_action_type_mask,
+        lstm_hidden_state,
+        deterministic,
+    ):
         """
         Args:
+            rules: (batch_size, rules_dim)
+            player: (batch_size, player_dim)
+            other_players: (batch_size, n_max_other_players, other_players_dim)
+            units: (batch_size, n_max_units, units_dim)
+            cities: (batch_size, n_max_cities, cities_dim)
+            other_units: (batch_size, n_max_other_units, other_units_dim)
+            other_cities: (batch_size, n_max_other_cities, other_cities_dim)
+            map: (batch_size, x_size, y_size, map_input_channels) TODO check input order
+            other_players_mask: (batch_size, n_max_other_players, 1) Note: masks are 0 for padding, 1 for non-padding
+            units_mask: (batch_size, n_max_units, 1)
+            cities_mask: (batch_size, n_max_cities, 1)
+            other_units_mask: (batch_size, n_max_other_units, 1)
+            other_cities_mask: (batch_size, n_max_other_cities, 1)
+            actor_type_mask: (batch_size, actor_type_dim)
+            city_id_mask: (batch_size, n_max_cities, 1)
+            city_action_type_mask: (batch_size, n_max_cities, city_action_type_dim)
+            unit_id_mask: (batch_size, n_max_units, 1)
+            unit_action_type_mask: (batch_size, n_max_units, unit_action_type_dim)
+            gov_action_type_mask: (batch_size, gov_action_type_dim)
             lstm_hidden_state: (h, c) where h and c are (n_lstm_layers, batch_size, lstm_hidden_dim)
+            deterministic: if True use argmax, else sample from distribution
         """
-        # obtain states
-        rules = states["rules"]  # (batch_size, rules_dim)
-        player = states["player"]  # (batch_size, player_dim)
-        other_players = states[
-            "other_players"
-        ]  # (batch_size, n_max_other_players, other_players_dim)
-        units = states["units"]  # (batch_size, n_max_units, units_dim)
-        cities = states["cities"]  # (batch_size, n_max_cities, cities_dim)
-        other_units = states[
-            "other_units"
-        ]  # (batch_size, n_max_other_units, other_units_dim)
-        other_cities = states[
-            "other_cities"
-        ]  # (batch_size, n_max_other_cities, other_cities_dim)
-        map = states[
-            "map"
-        ]  # (batch_size, x_size, y_size, map_input_channels) TODO check input order
         map = map.permute(
             0, 3, 1, 2
         )  # (batch_size, map_input_channels, x_size, y_size)
-
-        # obtain masks
-        # Note: masks are 0 for padding, 1 for non-padding
-        other_players_mask = masks[
-            "other_players"
-        ]  # (batch_size, n_max_other_players, 1)
-        units_mask = masks["units"]  # (batch_size, n_max_units, 1)
-        cities_mask = masks["cities"]  # (batch_size, n_max_cities, 1)
-        other_units_mask = masks["other_units"]  # (batch_size, n_max_other_units, 1)
-        other_cities_mask = masks["other_cities"]  # (batch_size, n_max_other_cities, 1)
-        actor_type_mask = masks["actor_type"]  # (batch_size, actor_type_dim)
-        city_id_mask = masks["city_id"]  # (batch_size, n_max_cities, 1)
-        unit_id_mask = masks["unit_id"]  # (batch_size, n_max_units, 1)
-        city_action_type_mask = masks[
-            "city_action_type"
-        ]  # (batch_size, n_max_cities, city_action_type_dim)
-        unit_action_type_mask = masks[
-            "unit_action_type"
-        ]  # (batch_size, n_max_units, unit_action_type_dim)
-        gov_action_type_mask = masks[
-            "gov_action_type"
-        ]  # (batch_size, gov_action_type_dim)
 
         # encoding step
         rules_encoded = self.rules_encoder(rules)  # (batch_size, hidden_dim)
@@ -309,72 +326,88 @@ class Agent(nn.Module):
         lstm_out = lstm_out.squeeze(0)  # (batch_size, lstm_hidden_dim)
 
         # output value predictions
-        value_predictions = self.value_linear(lstm_out)  # (batch_size, 1)
+        value_pred = self.value_linear(lstm_out)  # (batch_size, 1)
 
         # action step
         # actor type head
-        actor_type_logits = self.actor_type_linear(
-            lstm_out
-        )  # (batch_size, actor_type_dim)
-        actor_type_logits = actor_type_logits.masked_fill(actor_type_mask == 0, -10000)
-        actor_type = self.actor_type_softmax(
-            actor_type_logits
-        )  # (batch_size, actor_type_dim)
-        actor_distribution = Categorical(actor_type)
-        actor_type_id = actor_distribution.sample()  # (batch_size, 1)
+        actor_type_distribution = self.actor_type_head(lstm_out, actor_type_mask)
+        actor_type = (
+            actor_type_distribution.mode()
+            if deterministic
+            else actor_type_distribution.sample()
+        )
+        actor_type_log_prob = actor_type_distribution.log_probs(actor_type)
 
         # city id head
-        city_id, city_chosen_encoded = self.city_id_head(
-            lstm_out, cities_encoded, city_id_mask
+        city_id, city_id_log_prob, city_chosen_encoded = self.city_id_head(
+            lstm_out, cities_encoded, city_id_mask, deterministic
         )  # (batch_size, 1), (batch_size, hidden_dim)
 
         # city action type head
         city_action_input = torch.cat([lstm_out, city_chosen_encoded], dim=-1)
-        city_action_logits = self.city_action_linear(city_action_input)
         chosen_city_action_type_mask = city_action_type_mask[
             torch.arange(batch_size), city_id.squeeze(), :
         ]  # TODO: check whether gradient is correct
-        city_action_logits = city_action_logits.masked_fill(
-            chosen_city_action_type_mask == 0, -10000
+        city_action_type_distribution = self.city_action_head(
+            city_action_input, chosen_city_action_type_mask
         )
-        city_action_type = self.city_action_softmax(city_action_logits)
-        city_action_distribution = Categorical(city_action_type)
-        city_action_type_id = city_action_distribution.sample()  # (batch_size, 1)
+        city_action_type = (
+            city_action_type_distribution.mode()
+            if deterministic
+            else city_action_type_distribution.sample()
+        )
+        city_action_type_log_prob = city_action_type_distribution.log_probs(
+            city_action_type
+        )
 
         # unit id head
-        unit_id, unit_chosen_encoded = self.unit_id_head(
-            lstm_out, units_encoded, unit_id_mask
+        unit_id, unit_id_log_prob, unit_chosen_encoded = self.unit_id_head(
+            lstm_out, units_encoded, unit_id_mask, deterministic
         )  # (batch_size, 1), (batch_size, hidden_dim)
 
         # unit action type head
         unit_action_input = torch.cat([lstm_out, unit_chosen_encoded], dim=-1)
-        unit_action_logits = self.unit_action_linear(unit_action_input)
         chosen_unit_action_type_mask = unit_action_type_mask[
             torch.arange(batch_size), unit_id.squeeze(), :
         ]  # TODO: check whether gradient is correct
-        unit_action_logits = unit_action_logits.masked_fill(
-            chosen_unit_action_type_mask == 0, -10000
+        unit_action_type_distribution = self.unit_action_head(
+            unit_action_input, chosen_unit_action_type_mask
         )
-        unit_action_type = self.unit_action_softmax(unit_action_logits)
-        unit_action_distribution = Categorical(unit_action_type)
-        unit_action_type_id = unit_action_distribution.sample()  # (batch_size, 1)
+        unit_action_type = (
+            unit_action_type_distribution.mode()
+            if deterministic
+            else unit_action_type_distribution.sample()
+        )
+        unit_action_type_log_prob = unit_action_type_distribution.log_probs(
+            unit_action_type
+        )
 
         # gov action type head
-        gov_action_logits = self.gov_action_linear(lstm_out)
-        gov_action_logits = gov_action_logits.masked_fill(
-            gov_action_type_mask == 0, -10000
+        gov_action_type_distribution = self.gov_action_head(
+            lstm_out, gov_action_type_mask
         )
-        gov_action_type = self.gov_action_softmax(gov_action_logits)
-        gov_action_distribution = Categorical(gov_action_type)
-        gov_action_type_id = gov_action_distribution.sample()  # (batch_size, 1)
+        gov_action_type = (
+            gov_action_type_distribution.mode()
+            if deterministic
+            else gov_action_type_distribution.sample()
+        )
+        gov_action_type_log_prob = gov_action_type_distribution.log_probs(
+            gov_action_type
+        )
 
         return (
-            actor_type_id,
+            actor_type,
+            actor_type_log_prob,
             city_id,
-            city_action_type_id,
+            city_id_log_prob,
+            city_action_type,
+            city_action_type_log_prob,
             unit_id,
-            unit_action_type_id,
-            gov_action_type_id,
-            value_predictions,
+            unit_id_log_prob,
+            unit_action_type,
+            unit_action_type_log_prob,
+            gov_action_type,
+            gov_action_type_log_prob,
+            value_pred,
             lstm_hidden_state,
         )

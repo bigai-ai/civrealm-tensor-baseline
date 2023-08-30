@@ -35,3 +35,28 @@ def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
     learning_rate = initial_lr - (initial_lr * ((epoch - 1) / float(total_num_epochs)))
     for param_group in optimizer.param_groups:
         param_group["lr"] = learning_rate
+
+
+def get_init_method(initialization_method):
+    """Get the initialization method.
+    Args:
+        initialization_method: (str) initialization method
+    Returns:
+        initialization method: (torch.nn) initialization method
+    """
+    return nn.init.__dict__[initialization_method]
+
+
+def init(module, weight_init, bias_init, gain=1):
+    """Init module.
+    Args:
+        module: (torch.nn) module
+        weight_init: (torch.nn) weight init
+        bias_init: (torch.nn) bias init
+        gain: (float) gain
+    Returns:
+        module: (torch.nn) module
+    """
+    weight_init(module.weight.data, gain=gain)
+    bias_init(module.bias.data)
+    return module

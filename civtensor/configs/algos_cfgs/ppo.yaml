@@ -55,6 +55,10 @@ model:
   drop_prob: 0
   # number of lstm layers
   n_lstm_layers: 2
+  # initialization method for network parameters, choose from xavier_uniform_, orthogonal_, ...
+  initialization_method: orthogonal_
+  # gain of the output layer of the network.
+  gain: 0.01
   # length of data chunk; only useful when use_recurrent_policy is True; episode_length has to be a multiple of data_chunk_length
   data_chunk_length: 10
   # actor learning rate

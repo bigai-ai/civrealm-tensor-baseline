@@ -13,7 +13,7 @@ class Buffer:
         # init parameters
         self.episode_length = args["episode_length"]
         self.n_rollout_threads = args["n_rollout_threads"]
-        self.lstm_hidden_size = args["lstm_hidden_size"]
+        self.lstm_hidden_dim = args["lstm_hidden_dim"]
         self.n_lstm_layers = args["n_lstm_layers"]
         self.state_spaces = state_spaces
         self.action_spaces = action_spaces
@@ -143,7 +143,7 @@ class Buffer:
                 self.episode_length + 1,
                 self.n_rollout_threads,
                 self.n_lstm_layers,
-                self.lstm_hidden_size,
+                self.lstm_hidden_dim,
             ),
             dtype=np.float32,
         )
