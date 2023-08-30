@@ -102,22 +102,47 @@ class Runner:
 
             self.prep_rollout()
             for step in range(self.algo_args["train"]["episode_length"]):
-                (
-                    actor_type,
-                    actor_type_log_prob,
-                    city_id,
-                    city_id_log_prob,
-                    city_action_type,
-                    city_action_type_log_prob,
-                    unit_id,
-                    unit_id_log_prob,
-                    unit_action_type,
-                    unit_action_type_log_prob,
-                    gov_action_type,
-                    gov_action_type_log_prob,
-                    value_pred,
-                    lstm_hidden_state,
-                ) = self.collect(step)
+                with torch.no_grad():
+                    (
+                        actor_type,
+                        actor_type_log_prob,
+                        city_id,
+                        city_id_log_prob,
+                        city_action_type,
+                        city_action_type_log_prob,
+                        unit_id,
+                        unit_id_log_prob,
+                        unit_action_type,
+                        unit_action_type_log_prob,
+                        gov_action_type,
+                        gov_action_type_log_prob,
+                        value_pred,
+                        lstm_hidden_state,
+                    ) = self.algo.agent(
+                        self.buffer.rules_input[step],
+                        self.buffer.player_input[step],
+                        self.buffer.other_players_input[step],
+                        self.buffer.units_input[step],
+                        self.buffer.cities_input[step],
+                        self.buffer.other_units_input[step],
+                        self.buffer.other_cities_input[step],
+                        self.buffer.map_input[step],
+                        self.buffer.other_players_masks[step],
+                        self.buffer.units_masks[step],
+                        self.buffer.cities_masks[step],
+                        self.buffer.other_units_masks[step],
+                        self.buffer.other_cities_masks[step],
+                        self.buffer.actor_type_masks[step],
+                        self.buffer.city_id_masks[step],
+                        self.buffer.city_action_type_masks[step],
+                        self.buffer.unit_id_masks[step],
+                        self.buffer.unit_action_type_masks[step],
+                        self.buffer.gov_action_type_masks[step],
+                        self.buffer.lstm_hidden_states[
+                            step
+                        ],  # use previous lstm hidden state
+                        deterministic=False,
+                    )
 
                 (
                     rules,
@@ -275,34 +300,46 @@ class Runner:
         self.buffer.gov_action_type_masks[0] = gov_action_type_mask.copy()
 
     @torch.no_grad()
-    def collect(self, step):
-        return self.algo.agent(
-            self.buffer.rules_input[step],
-            self.buffer.player_input[step],
-            self.buffer.other_players_input[step],
-            self.buffer.units_input[step],
-            self.buffer.cities_input[step],
-            self.buffer.other_units_input[step],
-            self.buffer.other_cities_input[step],
-            self.buffer.map_input[step],
-            self.buffer.other_players_masks[step],
-            self.buffer.units_masks[step],
-            self.buffer.cities_masks[step],
-            self.buffer.other_units_masks[step],
-            self.buffer.other_cities_masks[step],
-            self.buffer.actor_type_masks[step],
-            self.buffer.city_id_masks[step],
-            self.buffer.city_action_type_masks[step],
-            self.buffer.unit_id_masks[step],
-            self.buffer.unit_action_type_masks[step],
-            self.buffer.gov_action_type_masks[step],
-            self.buffer.lstm_hidden_states[step],  # use previous lstm hidden state
+    def compute(self):
+        (
+            actor_type,
+            actor_type_log_prob,
+            city_id,
+            city_id_log_prob,
+            city_action_type,
+            city_action_type_log_prob,
+            unit_id,
+            unit_id_log_prob,
+            unit_action_type,
+            unit_action_type_log_prob,
+            gov_action_type,
+            gov_action_type_log_prob,
+            value_pred,
+            lstm_hidden_state,
+        ) = self.algo.agent(
+            self.buffer.rules_input[-1],
+            self.buffer.player_input[-1],
+            self.buffer.other_players_input[-1],
+            self.buffer.units_input[-1],
+            self.buffer.cities_input[-1],
+            self.buffer.other_units_input[-1],
+            self.buffer.other_cities_input[-1],
+            self.buffer.map_input[-1],
+            self.buffer.other_players_masks[-1],
+            self.buffer.units_masks[-1],
+            self.buffer.cities_masks[-1],
+            self.buffer.other_units_masks[-1],
+            self.buffer.other_cities_masks[-1],
+            self.buffer.actor_type_masks[-1],
+            self.buffer.city_id_masks[-1],
+            self.buffer.city_action_type_masks[-1],
+            self.buffer.unit_id_masks[-1],
+            self.buffer.unit_action_type_masks[-1],
+            self.buffer.gov_action_type_masks[-1],
+            self.buffer.lstm_hidden_states[-1],  # use previous lstm hidden state
             deterministic=False,
         )
-
-    @torch.no_grad()
-    def compute(self):
-        raise NotImplementedError
+        self.buffer.compute_returns(value_pred, self.value_normalizer)
 
     def after_update(self):
         self.buffer.after_update()

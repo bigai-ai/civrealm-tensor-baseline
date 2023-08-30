@@ -15,6 +15,11 @@ class Buffer:
         self.n_rollout_threads = args["n_rollout_threads"]
         self.lstm_hidden_dim = args["lstm_hidden_dim"]
         self.n_lstm_layers = args["n_lstm_layers"]
+        self.gamma = args["gamma"]
+        self.gae_lambda = args["gae_lambda"]
+        self.use_gae = args["use_gae"]
+        self.use_proper_time_limits = args["use_proper_time_limits"]
+
         self.state_spaces = state_spaces
         self.action_spaces = action_spaces
         # obtain input dimensions. TODO: be consistent with env
@@ -341,50 +346,108 @@ class Buffer:
         self.masks[0] = self.masks[-1].copy()
         self.bad_masks[0] = self.bad_masks[-1].copy()
 
-    def compute_returns(
-        self, next_value, use_gae, gamma, gae_lambda, use_proper_time_limits=True
-    ):
-        if use_proper_time_limits:
-            if use_gae:
+    def compute_returns(self, next_value, value_normalizer=None):
+        """Compute returns either as discounted sum of rewards, or using GAE.
+        Args:
+            next_value: (np.ndarray) value predictions for the step after the last episode step.
+            value_normalizer: (ValueNorm) If not None, ValueNorm value normalizer instance.
+        """
+        if (
+            self.use_proper_time_limits
+        ):  # consider the difference between truncation and termination
+            if self.use_gae:  # use GAE
                 self.value_preds[-1] = next_value
                 gae = 0
-                for step in reversed(range(self.rewards.size(0))):
-                    delta = (
-                        self.rewards[step]
-                        + gamma * self.value_preds[step + 1] * self.masks[step + 1]
-                        - self.value_preds[step]
-                    )
-                    gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
-                    gae = gae * self.bad_masks[step + 1]
-                    self.returns[step] = gae + self.value_preds[step]
-            else:
+                for step in reversed(range(self.rewards.shape[0])):
+                    if value_normalizer is not None:  # use ValueNorm
+                        delta = (
+                            self.rewards[step]
+                            + self.gamma
+                            * value_normalizer.denormalize(self.value_preds[step + 1])
+                            * self.masks[step + 1]
+                            - value_normalizer.denormalize(self.value_preds[step])
+                        )
+                        gae = (
+                            delta
+                            + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
+                        )
+                        gae = self.bad_masks[step + 1] * gae
+                        self.returns[step] = gae + value_normalizer.denormalize(
+                            self.value_preds[step]
+                        )
+                    else:  # do not use ValueNorm
+                        delta = (
+                            self.rewards[step]
+                            + self.gamma
+                            * self.value_preds[step + 1]
+                            * self.masks[step + 1]
+                            - self.value_preds[step]
+                        )
+                        gae = (
+                            delta
+                            + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
+                        )
+                        gae = self.bad_masks[step + 1] * gae
+                        self.returns[step] = gae + self.value_preds[step]
+            else:  # do not use GAE
                 self.returns[-1] = next_value
-                for step in reversed(range(self.rewards.size(0))):
-                    self.returns[step] = (
-                        self.returns[step + 1] * gamma * self.masks[step + 1]
-                        + self.rewards[step]
-                    ) * self.bad_masks[step + 1] + (
-                        1 - self.bad_masks[step + 1]
-                    ) * self.value_preds[
-                        step
-                    ]
-        else:
-            if use_gae:
+                for step in reversed(range(self.rewards.shape[0])):
+                    if value_normalizer is not None:  # use ValueNorm
+                        self.returns[step] = (
+                            self.returns[step + 1] * self.gamma * self.masks[step + 1]
+                            + self.rewards[step]
+                        ) * self.bad_masks[step + 1] + (
+                            1 - self.bad_masks[step + 1]
+                        ) * value_normalizer.denormalize(
+                            self.value_preds[step]
+                        )
+                    else:  # do not use ValueNorm
+                        self.returns[step] = (
+                            self.returns[step + 1] * self.gamma * self.masks[step + 1]
+                            + self.rewards[step]
+                        ) * self.bad_masks[step + 1] + (
+                            1 - self.bad_masks[step + 1]
+                        ) * self.value_preds[
+                            step
+                        ]
+        else:  # do not consider the difference between truncation and termination, i.e. all done episodes are terminated
+            if self.use_gae:  # use GAE
                 self.value_preds[-1] = next_value
                 gae = 0
-                for step in reversed(range(self.rewards.size(0))):
-                    delta = (
-                        self.rewards[step]
-                        + gamma * self.value_preds[step + 1] * self.masks[step + 1]
-                        - self.value_preds[step]
-                    )
-                    gae = delta + gamma * gae_lambda * self.masks[step + 1] * gae
-                    self.returns[step] = gae + self.value_preds[step]
-            else:
+                for step in reversed(range(self.rewards.shape[0])):
+                    if value_normalizer is not None:  # use ValueNorm
+                        delta = (
+                            self.rewards[step]
+                            + self.gamma
+                            * value_normalizer.denormalize(self.value_preds[step + 1])
+                            * self.masks[step + 1]
+                            - value_normalizer.denormalize(self.value_preds[step])
+                        )
+                        gae = (
+                            delta
+                            + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
+                        )
+                        self.returns[step] = gae + value_normalizer.denormalize(
+                            self.value_preds[step]
+                        )
+                    else:  # do not use ValueNorm
+                        delta = (
+                            self.rewards[step]
+                            + self.gamma
+                            * self.value_preds[step + 1]
+                            * self.masks[step + 1]
+                            - self.value_preds[step]
+                        )
+                        gae = (
+                            delta
+                            + self.gamma * self.gae_lambda * self.masks[step + 1] * gae
+                        )
+                        self.returns[step] = gae + self.value_preds[step]
+            else:  # do not use GAE
                 self.returns[-1] = next_value
-                for step in reversed(range(self.rewards.size(0))):
+                for step in reversed(range(self.rewards.shape[0])):
                     self.returns[step] = (
-                        self.returns[step + 1] * gamma * self.masks[step + 1]
+                        self.returns[step + 1] * self.gamma * self.masks[step + 1]
                         + self.rewards[step]
                     )
 
