@@ -4,18 +4,18 @@ from civtensor.models.base.distributions import FixedCategorical
 
 
 class PointerNetwork(nn.Module):
-    def __init__(self, hidden_dim, lstm_hidden_dim):
+    def __init__(self, hidden_dim, rnn_hidden_dim):
         super().__init__()
         self.hidden_dim = hidden_dim
-        self.lstm_hidden_dim = lstm_hidden_dim
+        self.rnn_hidden_dim = rnn_hidden_dim
 
-        self.w_q = nn.Linear(self.lstm_hidden_dim, self.hidden_dim)
+        self.w_q = nn.Linear(self.rnn_hidden_dim, self.hidden_dim)
         self.w_k = nn.Linear(self.hidden_dim, self.hidden_dim)
 
-    def forward(self, lstm_output, hidden_state, mask, deterministic):
+    def forward(self, rnn_output, hidden_state, mask, deterministic):
         """
         Args:
-            lstm_outputs: (batch_size, lstm_hidden_dim)
+            rnn_outputs: (batch_size, rnn_hidden_dim)
             hidden_state: (batch_size, max_length, hidden_dim)
             mask: (batch_size, max_length, 1)
             deterministic: bool
@@ -25,7 +25,7 @@ class PointerNetwork(nn.Module):
             log_probs: (batch_size, 1)
             chosen_encoded: (batch_size, hidden_dim)
         """
-        q = self.w_q(lstm_output)  # (batch_size, hidden_dim)
+        q = self.w_q(rnn_output)  # (batch_size, hidden_dim)
         k = self.w_k(hidden_state)  # (batch_size, max_length, hidden_dim)
         scores = torch.bmm(k, q.unsqueeze(2)).squeeze(2)  # (batch_size, max_length)
         scores[mask.squeeze(2) == 0] = -1e10

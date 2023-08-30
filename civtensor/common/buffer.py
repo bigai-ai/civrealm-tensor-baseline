@@ -13,8 +13,8 @@ class Buffer:
         # init parameters
         self.episode_length = args["episode_length"]
         self.n_rollout_threads = args["n_rollout_threads"]
-        self.lstm_hidden_dim = args["lstm_hidden_dim"]
-        self.n_lstm_layers = args["n_lstm_layers"]
+        self.rnn_hidden_dim = args["rnn_hidden_dim"]
+        self.n_rnn_layers = args["n_rnn_layers"]
         self.gamma = args["gamma"]
         self.gae_lambda = args["gae_lambda"]
         self.use_gae = args["use_gae"]
@@ -143,12 +143,12 @@ class Buffer:
             dtype=np.int32,
         )
 
-        self.lstm_hidden_states = np.zeros(
+        self.rnn_hidden_states = np.zeros(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_lstm_layers,
-                self.lstm_hidden_dim,
+                self.n_rnn_layers,
+                self.rnn_hidden_dim,
             ),
             dtype=np.float32,
         )
@@ -257,7 +257,7 @@ class Buffer:
             cities_mask,
             other_units_mask,
             other_cities_mask,
-            lstm_hidden_state,
+            rnn_hidden_state,
             actor_type,
             actor_type_log_prob,
             actor_type_mask,
@@ -295,7 +295,7 @@ class Buffer:
         self.cities_masks[self.step + 1] = cities_mask.copy()
         self.other_units_masks[self.step + 1] = other_units_mask.copy()
         self.other_cities_masks[self.step + 1] = other_cities_mask.copy()
-        self.lstm_hidden_states[self.step + 1] = lstm_hidden_state.copy()
+        self.rnn_hidden_states[self.step + 1] = rnn_hidden_state.copy()
         self.actor_type_output[self.step] = actor_type.copy()
         self.actor_type_log_probs[self.step] = actor_type_log_prob.copy()
         self.actor_type_masks[self.step + 1] = actor_type_mask.copy()
@@ -336,7 +336,7 @@ class Buffer:
         self.cities_masks[0] = self.cities_masks[-1].copy()
         self.other_units_masks[0] = self.other_units_masks[-1].copy()
         self.other_cities_masks[0] = self.other_cities_masks[-1].copy()
-        self.lstm_hidden_states[0] = self.lstm_hidden_states[-1].copy()
+        self.rnn_hidden_states[0] = self.rnn_hidden_states[-1].copy()
         self.actor_type_masks[0] = self.actor_type_masks[-1].copy()
         self.city_id_masks[0] = self.city_id_masks[-1].copy()
         self.city_action_type_masks[0] = self.city_action_type_masks[-1].copy()
@@ -469,55 +469,65 @@ class Buffer:
         for batch_id in range(num_mini_batch):
             start_id = batch_id * num_envs_per_batch
             ids = perm[start_id : start_id + num_envs_per_batch]
-            rules_batch = _flatten(self.rules_input[:-1, ids])
-            player_batch = _flatten(self.player_input[:-1, ids])
-            other_players_batch = _flatten(self.other_players_input[:-1, ids])
-            units_batch = _flatten(self.units_input[:-1, ids])
-            cities_batch = _flatten(self.cities_input[:-1, ids])
-            other_units_batch = _flatten(self.other_units_input[:-1, ids])
-            other_cities_batch = _flatten(self.other_cities_input[:-1, ids])
-            map_batch = _flatten(self.map_input[:-1, ids])
-            other_players_masks_batch = _flatten(self.other_players_masks[:-1, ids])
-            units_masks_batch = _flatten(self.units_masks[:-1, ids])
-            cities_masks_batch = _flatten(self.cities_masks[:-1, ids])
-            other_units_masks_batch = _flatten(self.other_units_masks[:-1, ids])
-            other_cities_masks_batch = _flatten(self.other_cities_masks[:-1, ids])
-            lstm_hidden_states_batch = self.lstm_hidden_states[0:1, ids]
-            value_preds_batch = _flatten(self.value_preds[:-1, ids])
-            return_batch = _flatten(self.returns[:-1, ids])
-            adv_targ = _flatten(advantages[:-1, ids])
-            actor_type_batch = _flatten(self.actor_type_output[:, ids])
-            actor_type_log_probs_batch = _flatten(self.actor_type_log_probs[:, ids])
-            actor_type_masks_batch = _flatten(self.actor_type_masks[:-1, ids])
-            city_id_batch = _flatten(self.city_id_output[:, ids])
-            city_id_log_probs_batch = _flatten(self.city_id_log_probs[:, ids])
-            city_id_masks_batch = _flatten(self.city_id_masks[:-1, ids])
-            city_action_type_batch = _flatten(self.city_action_type_output[:, ids])
-            city_action_type_log_probs_batch = _flatten(
-                self.city_action_type_log_probs[:, ids]
+            rules_batch = _flatten(T, N, self.rules_input[:-1, ids])
+            player_batch = _flatten(T, N, self.player_input[:-1, ids])
+            other_players_batch = _flatten(T, N, self.other_players_input[:-1, ids])
+            units_batch = _flatten(T, N, self.units_input[:-1, ids])
+            cities_batch = _flatten(T, N, self.cities_input[:-1, ids])
+            other_units_batch = _flatten(T, N, self.other_units_input[:-1, ids])
+            other_cities_batch = _flatten(T, N, self.other_cities_input[:-1, ids])
+            map_batch = _flatten(T, N, self.map_input[:-1, ids])
+            other_players_masks_batch = _flatten(
+                T, N, self.other_players_masks[:-1, ids]
+            )
+            units_masks_batch = _flatten(T, N, self.units_masks[:-1, ids])
+            cities_masks_batch = _flatten(T, N, self.cities_masks[:-1, ids])
+            other_units_masks_batch = _flatten(T, N, self.other_units_masks[:-1, ids])
+            other_cities_masks_batch = _flatten(T, N, self.other_cities_masks[:-1, ids])
+            rnn_hidden_states_batch = self.rnn_hidden_states[0:1, ids]
+            value_preds_batch = _flatten(T, N, self.value_preds[:-1, ids])
+            return_batch = _flatten(T, N, self.returns[:-1, ids])
+            adv_targ = _flatten(T, N, advantages[:-1, ids])
+            actor_type_batch = _flatten(T, N, self.actor_type_output[:, ids])
+            old_actor_type_log_probs_batch = _flatten(
+                T, N, self.actor_type_log_probs[:, ids]
+            )
+            actor_type_masks_batch = _flatten(T, N, self.actor_type_masks[:-1, ids])
+            city_id_batch = _flatten(T, N, self.city_id_output[:, ids])
+            old_city_id_log_probs_batch = _flatten(T, N, self.city_id_log_probs[:, ids])
+            city_id_masks_batch = _flatten(T, N, self.city_id_masks[:-1, ids])
+            city_action_type_batch = _flatten(
+                T, N, self.city_action_type_output[:, ids]
+            )
+            old_city_action_type_log_probs_batch = _flatten(
+                T, N, self.city_action_type_log_probs[:, ids]
             )
             city_action_type_masks_batch = _flatten(
-                self.city_action_type_masks[:-1, ids]
+                T, N, self.city_action_type_masks[:-1, ids]
             )
-            unit_id_batch = _flatten(self.unit_id_output[:, ids])
-            unit_id_log_probs_batch = _flatten(self.unit_id_log_probs[:, ids])
-            unit_id_masks_batch = _flatten(self.unit_id_masks[:-1, ids])
-            unit_action_type_batch = _flatten(self.unit_action_type_output[:, ids])
-            unit_action_type_log_probs_batch = _flatten(
-                self.unit_action_type_log_probs[:, ids]
+            unit_id_batch = _flatten(T, N, self.unit_id_output[:, ids])
+            old_unit_id_log_probs_batch = _flatten(T, N, self.unit_id_log_probs[:, ids])
+            unit_id_masks_batch = _flatten(T, N, self.unit_id_masks[:-1, ids])
+            unit_action_type_batch = _flatten(
+                T, N, self.unit_action_type_output[:, ids]
+            )
+            old_unit_action_type_log_probs_batch = _flatten(
+                T, N, self.unit_action_type_log_probs[:, ids]
             )
             unit_action_type_masks_batch = _flatten(
-                self.unit_action_type_masks[:-1, ids]
+                T, N, self.unit_action_type_masks[:-1, ids]
             )
-            gov_action_type_batch = _flatten(self.gov_action_type_output[:, ids])
-            gov_action_type_log_probs_batch = _flatten(
-                self.gov_action_type_log_probs[:, ids]
+            gov_action_type_batch = _flatten(T, N, self.gov_action_type_output[:, ids])
+            old_gov_action_type_log_probs_batch = _flatten(
+                T, N, self.gov_action_type_log_probs[:, ids]
             )
-            gov_action_type_masks_batch = _flatten(self.gov_action_type_masks[:-1, ids])
-            masks_batch = _flatten(self.masks[:-1, ids])
-            bad_masks_batch = _flatten(self.bad_masks[:-1, ids])
+            gov_action_type_masks_batch = _flatten(
+                T, N, self.gov_action_type_masks[:-1, ids]
+            )
+            masks_batch = _flatten(T, N, self.masks[:-1, ids])
+            bad_masks_batch = _flatten(T, N, self.bad_masks[:-1, ids])
 
-            lstm_hidden_states_batch = lstm_hidden_states_batch.squeeze(0)
+            rnn_hidden_states_batch = rnn_hidden_states_batch.squeeze(0)
 
             yield (
                 rules_batch,
@@ -533,27 +543,27 @@ class Buffer:
                 cities_masks_batch,
                 other_units_masks_batch,
                 other_cities_masks_batch,
-                lstm_hidden_states_batch,
+                rnn_hidden_states_batch,
                 value_preds_batch,
                 return_batch,
                 adv_targ,
                 actor_type_batch,
-                actor_type_log_probs_batch,
+                old_actor_type_log_probs_batch,
                 actor_type_masks_batch,
                 city_id_batch,
-                city_id_log_probs_batch,
+                old_city_id_log_probs_batch,
                 city_id_masks_batch,
                 city_action_type_batch,
-                city_action_type_log_probs_batch,
+                old_city_action_type_log_probs_batch,
                 city_action_type_masks_batch,
                 unit_id_batch,
-                unit_id_log_probs_batch,
+                old_unit_id_log_probs_batch,
                 unit_id_masks_batch,
                 unit_action_type_batch,
-                unit_action_type_log_probs_batch,
+                old_unit_action_type_log_probs_batch,
                 unit_action_type_masks_batch,
                 gov_action_type_batch,
-                gov_action_type_log_probs_batch,
+                old_gov_action_type_log_probs_batch,
                 gov_action_type_masks_batch,
                 masks_batch,
                 bad_masks_batch,

@@ -45,16 +45,16 @@ render:
 model:
   # hidden dimension
   hidden_dim: 256
-  # hidden dimension for LSTM
-  lstm_hidden_dim: 1024
+  # hidden dimension for rnn
+  rnn_hidden_dim: 1024
   # number of heads in transformer
   n_head: 2
   # number of layers in transformer
   n_layers: 2
   # dropout probability
   drop_prob: 0
-  # number of lstm layers
-  n_lstm_layers: 2
+  # number of rnn layers
+  n_rnn_layers: 2
   # initialization method for network parameters, choose from xavier_uniform_, orthogonal_, ...
   initialization_method: orthogonal_
   # gain of the output layer of the network.

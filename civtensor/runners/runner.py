@@ -18,8 +18,8 @@ class Runner:
         self.algo_args = algo_args
         self.env_args = env_args
 
-        self.lstm_hidden_dim = algo_args["model"]["lstm_hidden_dim"]
-        self.n_lstm_layers = algo_args["model"]["n_lstm_layers"]
+        self.rnn_hidden_dim = algo_args["model"]["rnn_hidden_dim"]
+        self.n_rnn_layers = algo_args["model"]["n_rnn_layers"]
 
         set_seed(algo_args["seed"])
         self.device = init_device(algo_args["device"])
@@ -117,7 +117,7 @@ class Runner:
                         gov_action_type,
                         gov_action_type_log_prob,
                         value_pred,
-                        lstm_hidden_state,
+                        rnn_hidden_state,
                     ) = self.algo.agent(
                         self.buffer.rules_input[step],
                         self.buffer.player_input[step],
@@ -138,9 +138,10 @@ class Runner:
                         self.buffer.unit_id_masks[step],
                         self.buffer.unit_action_type_masks[step],
                         self.buffer.gov_action_type_masks[step],
-                        self.buffer.lstm_hidden_states[
+                        self.buffer.rnn_hidden_states[
                             step
-                        ],  # use previous lstm hidden state
+                        ],  # use previous rnn hidden state
+                        self.buffer.masks[step],
                         deterministic=False,
                     )
 
@@ -183,13 +184,13 @@ class Runner:
                 # bad_mask use 0 to denote truncation and 1 to denote termination or not done
                 bad_mask = np.logical_not(trunc)
 
-                # reset certain lstm hidden state
+                # reset certain rnn hidden state
                 done_env = done.squeeze(1)
-                lstm_hidden_state[done_env == True] = np.zeros(
+                rnn_hidden_state[done_env == True] = np.zeros(
                     (
                         (done_env == True).sum(),
-                        self.n_lstm_layers,
-                        self.lstm_hidden_dim,
+                        self.n_rnn_layers,
+                        self.rnn_hidden_dim,
                     )
                 )
 
@@ -207,7 +208,7 @@ class Runner:
                     cities_mask,
                     other_units_mask,
                     other_cities_mask,
-                    lstm_hidden_state,
+                    rnn_hidden_state,
                     actor_type,
                     actor_type_log_prob,
                     actor_type_mask,
@@ -315,7 +316,7 @@ class Runner:
             gov_action_type,
             gov_action_type_log_prob,
             value_pred,
-            lstm_hidden_state,
+            rnn_hidden_state,
         ) = self.algo.agent(
             self.buffer.rules_input[-1],
             self.buffer.player_input[-1],
@@ -336,7 +337,8 @@ class Runner:
             self.buffer.unit_id_masks[-1],
             self.buffer.unit_action_type_masks[-1],
             self.buffer.gov_action_type_masks[-1],
-            self.buffer.lstm_hidden_states[-1],  # use previous lstm hidden state
+            self.buffer.rnn_hidden_states[-1],  # use previous rnn hidden state
+            self.buffer.masks[-1],
             deterministic=False,
         )
         self.buffer.compute_returns(value_pred, self.value_normalizer)
@@ -345,7 +347,12 @@ class Runner:
         self.buffer.after_update()
 
     def train(self):
-        raise NotImplementedError
+        advantages = self.buffer.returns[:-1] - self.value_normalizer.denormalize(
+            self.buffer.value_preds[:-1]
+        )
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        train_info = self.algo.train(self.buffer, advantages)
+        return train_info
 
     @torch.no_grad()
     def eval(self):

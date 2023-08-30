@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 from civtensor.models.base.distributions import Categorical
+from civtensor.models.base.rnn import RNNLayer
 from civtensor.models.encoder.transformer_encoder import TransformerEncoder
 from civtensor.models.pointer_network.pointer_network import PointerNetwork
 
@@ -49,11 +50,11 @@ class Agent(nn.Module):
 
         # obtain hidden dimensions
         self.hidden_dim = args["hidden_dim"]  # 256
-        self.lstm_hidden_dim = args["lstm_hidden_dim"]  # 1024
+        self.rnn_hidden_dim = args["rnn_hidden_dim"]  # 1024
         self.n_head = args["n_head"]  # 2
         self.n_layers = args["n_layers"]  # 2
         self.drop_prob = args["drop_prob"]  # 0
-        self.n_lstm_layers = args["n_lstm_layers"]  # 2
+        self.n_rnn_layers = args["n_rnn_layers"]  # 2
 
         # initialize encoders
         self.rules_encoder = nn.Sequential(
@@ -124,48 +125,51 @@ class Agent(nn.Module):
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
-        # initialize lstm.
-        self.lstm = nn.LSTM(
-            8 * self.hidden_dim, self.lstm_hidden_dim, self.n_lstm_layers
+        # initialize rnn.
+        self.rnn = RNNLayer(
+            8 * self.hidden_dim,
+            self.rnn_hidden_dim,
+            self.n_rnn_layers,
+            self.initialization_method,
         )
 
         # initialize value head
-        self.value_linear = nn.Linear(self.lstm_hidden_dim, 1)
+        self.value_linear = nn.Linear(self.rnn_hidden_dim, 1)
 
         # initialize actor heads
         self.actor_type_head = Categorical(
-            self.lstm_hidden_dim,
+            self.rnn_hidden_dim,
             self.actor_type_dim,
             self.initialization_method,
             self.gain,
         )
 
-        self.city_id_head = PointerNetwork(self.hidden_dim, self.lstm_hidden_dim)
+        self.city_id_head = PointerNetwork(self.hidden_dim, self.rnn_hidden_dim)
 
-        self.unit_id_head = PointerNetwork(self.hidden_dim, self.lstm_hidden_dim)
+        self.unit_id_head = PointerNetwork(self.hidden_dim, self.rnn_hidden_dim)
 
         self.city_action_head = Categorical(
-            self.lstm_hidden_dim + self.hidden_dim,
+            self.rnn_hidden_dim + self.hidden_dim,
             self.city_action_type_dim,
             self.initialization_method,
             self.gain,
         )
 
         self.unit_action_head = Categorical(
-            self.lstm_hidden_dim + self.hidden_dim,
+            self.rnn_hidden_dim + self.hidden_dim,
             self.unit_action_type_dim,
             self.initialization_method,
             self.gain,
         )
 
         self.gov_action_head = Categorical(
-            self.lstm_hidden_dim,
+            self.rnn_hidden_dim,
             self.gov_action_type_dim,
             self.initialization_method,
             self.gain,
         )
 
-    def forward(
+    def encoding_step(
         self,
         rules,
         player,
@@ -180,14 +184,6 @@ class Agent(nn.Module):
         cities_mask,
         other_units_mask,
         other_cities_mask,
-        actor_type_mask,
-        city_id_mask,
-        city_action_type_mask,
-        unit_id_mask,
-        unit_action_type_mask,
-        gov_action_type_mask,
-        lstm_hidden_state,
-        deterministic,
     ):
         """
         Args:
@@ -204,14 +200,6 @@ class Agent(nn.Module):
             cities_mask: (batch_size, n_max_cities, 1)
             other_units_mask: (batch_size, n_max_other_units, 1)
             other_cities_mask: (batch_size, n_max_other_cities, 1)
-            actor_type_mask: (batch_size, actor_type_dim)
-            city_id_mask: (batch_size, n_max_cities, 1)
-            city_action_type_mask: (batch_size, n_max_cities, city_action_type_dim)
-            unit_id_mask: (batch_size, n_max_units, 1)
-            unit_action_type_mask: (batch_size, n_max_units, unit_action_type_dim)
-            gov_action_type_mask: (batch_size, gov_action_type_dim)
-            lstm_hidden_state: (h, c) where h and c are (n_lstm_layers, batch_size, lstm_hidden_dim)
-            deterministic: if True use argmax, else sample from distribution
         """
         map = map.permute(
             0, 3, 1, 2
@@ -313,24 +301,100 @@ class Agent(nn.Module):
             global_encoding, src_mask=None
         )  # (batch_size, 8, hidden_dim)
 
-        # lstm step
+        return global_encoding_processed, units_encoded, cities_encoded
+
+    def forward(
+        self,
+        rules,
+        player,
+        other_players,
+        units,
+        cities,
+        other_units,
+        other_cities,
+        map,
+        other_players_mask,
+        units_mask,
+        cities_mask,
+        other_units_mask,
+        other_cities_mask,
+        actor_type_mask,
+        city_id_mask,
+        city_action_type_mask,
+        unit_id_mask,
+        unit_action_type_mask,
+        gov_action_type_mask,
+        rnn_hidden_state,
+        mask,  # TODO check whether logic related to mask is correct
+        deterministic,
+    ):
+        """
+        Args:
+            rules: (batch_size, rules_dim)
+            player: (batch_size, player_dim)
+            other_players: (batch_size, n_max_other_players, other_players_dim)
+            units: (batch_size, n_max_units, units_dim)
+            cities: (batch_size, n_max_cities, cities_dim)
+            other_units: (batch_size, n_max_other_units, other_units_dim)
+            other_cities: (batch_size, n_max_other_cities, other_cities_dim)
+            map: (batch_size, x_size, y_size, map_input_channels) TODO check input order
+            other_players_mask: (batch_size, n_max_other_players, 1) Note: masks are 0 for padding, 1 for non-padding
+            units_mask: (batch_size, n_max_units, 1)
+            cities_mask: (batch_size, n_max_cities, 1)
+            other_units_mask: (batch_size, n_max_other_units, 1)
+            other_cities_mask: (batch_size, n_max_other_cities, 1)
+            actor_type_mask: (batch_size, actor_type_dim)
+            city_id_mask: (batch_size, n_max_cities, 1)
+            city_action_type_mask: (batch_size, n_max_cities, city_action_type_dim)
+            unit_id_mask: (batch_size, n_max_units, 1)
+            unit_action_type_mask: (batch_size, n_max_units, unit_action_type_dim)
+            gov_action_type_mask: (batch_size, gov_action_type_dim)
+            rnn_hidden_state: (h, c) where h and c are (n_rnn_layers, batch_size, rnn_hidden_dim)
+            mask: (batch_size, 1)
+            deterministic: if True use argmax, else sample from distribution
+        """
+
+        # encoding step
+        global_encoding_processed, units_encoded, cities_encoded = self.encoding_step(
+            rules,
+            player,
+            other_players,
+            units,
+            cities,
+            other_units,
+            other_cities,
+            map,
+            other_players_mask,
+            units_mask,
+            cities_mask,
+            other_units_mask,
+            other_cities_mask,
+        )
+
+        batch_size = rules.shape[0]
+
+        # rnn step
         global_encoding_concat = global_encoding_processed.view(
             batch_size, -1
         )  # (batch_size, 8 * hidden_dim)
 
+        rnn_out, rnn_hidden_state = self.rnn(
+            global_encoding_concat, rnn_hidden_state, mask
+        )  # TODO: check is there problems with gradient due to same name used by rnn_hidden_state
+
         # TODO: add training logic; we may need to extract this into a separate class
-        # lstm_hidden_state: (h, c) where h and c are (n_lstm_layers, batch_size, lstm_hidden_dim)
-        lstm_out, lstm_hidden_state = self.lstm(
-            global_encoding_concat.unsqueeze(0), lstm_hidden_state
-        )  # (1, batch_size, lstm_hidden_dim), ((n_lstm_layers, batch_size, lstm_hidden_dim), (n_lstm_layers, batch_size, lstm_hidden_dim))
-        lstm_out = lstm_out.squeeze(0)  # (batch_size, lstm_hidden_dim)
+        # rnn_hidden_state: (h, c) where h and c are (n_rnn_layers, batch_size, rnn_hidden_dim)
+        rnn_out, rnn_hidden_state = self.rnn(
+            global_encoding_concat.unsqueeze(0), rnn_hidden_state
+        )  # (1, batch_size, rnn_hidden_dim), ((n_rnn_layers, batch_size, rnn_hidden_dim), (n_rnn_layers, batch_size, rnn_hidden_dim))
+        rnn_out = rnn_out.squeeze(0)  # (batch_size, rnn_hidden_dim)
 
         # output value predictions
-        value_pred = self.value_linear(lstm_out)  # (batch_size, 1)
+        value_pred = self.value_linear(rnn_out)  # (batch_size, 1)
 
         # action step
         # actor type head
-        actor_type_distribution = self.actor_type_head(lstm_out, actor_type_mask)
+        actor_type_distribution = self.actor_type_head(rnn_out, actor_type_mask)
         actor_type = (
             actor_type_distribution.mode()
             if deterministic
@@ -340,11 +404,11 @@ class Agent(nn.Module):
 
         # city id head
         city_id, city_id_log_prob, city_chosen_encoded = self.city_id_head(
-            lstm_out, cities_encoded, city_id_mask, deterministic
+            rnn_out, cities_encoded, city_id_mask, deterministic
         )  # (batch_size, 1), (batch_size, hidden_dim)
 
         # city action type head
-        city_action_input = torch.cat([lstm_out, city_chosen_encoded], dim=-1)
+        city_action_input = torch.cat([rnn_out, city_chosen_encoded], dim=-1)
         chosen_city_action_type_mask = city_action_type_mask[
             torch.arange(batch_size), city_id.squeeze(), :
         ]  # TODO: check whether gradient is correct
@@ -362,11 +426,11 @@ class Agent(nn.Module):
 
         # unit id head
         unit_id, unit_id_log_prob, unit_chosen_encoded = self.unit_id_head(
-            lstm_out, units_encoded, unit_id_mask, deterministic
+            rnn_out, units_encoded, unit_id_mask, deterministic
         )  # (batch_size, 1), (batch_size, hidden_dim)
 
         # unit action type head
-        unit_action_input = torch.cat([lstm_out, unit_chosen_encoded], dim=-1)
+        unit_action_input = torch.cat([rnn_out, unit_chosen_encoded], dim=-1)
         chosen_unit_action_type_mask = unit_action_type_mask[
             torch.arange(batch_size), unit_id.squeeze(), :
         ]  # TODO: check whether gradient is correct
@@ -384,7 +448,7 @@ class Agent(nn.Module):
 
         # gov action type head
         gov_action_type_distribution = self.gov_action_head(
-            lstm_out, gov_action_type_mask
+            rnn_out, gov_action_type_mask
         )
         gov_action_type = (
             gov_action_type_distribution.mode()
@@ -409,5 +473,54 @@ class Agent(nn.Module):
             gov_action_type,
             gov_action_type_log_prob,
             value_pred,
-            lstm_hidden_state,
+            rnn_hidden_state,
         )
+
+    def evaluate_actions(
+        self,
+        rules_batch,  # (episode_length * num_envs_per_batch, rules_dim)
+        player_batch,  # (episode_length * num_envs_per_batch, player_dim)
+        other_players_batch,  # (episode_length * num_envs_per_batch, n_max_other_players, other_players_dim)
+        units_batch,  # (episode_length * num_envs_per_batch, n_max_units, units_dim)
+        cities_batch,  # (episode_length * num_envs_per_batch, n_max_cities, cities_dim)
+        other_units_batch,  # (episode_length * num_envs_per_batch, n_max_other_units, other_units_dim)
+        other_cities_batch,  # (episode_length * num_envs_per_batch, n_max_other_cities, other_cities_dim)
+        map_batch,  # (episode_length * num_envs_per_batch, x_size, y_size, map_input_channels)
+        other_players_masks_batch,  # (episode_length * num_envs_per_batch, n_max_other_players, 1)
+        units_masks_batch,  # (episode_length * num_envs_per_batch, n_max_units, 1)
+        cities_masks_batch,  # (episode_length * num_envs_per_batch, n_max_cities, 1)
+        other_units_masks_batch,  # (episode_length * num_envs_per_batch, n_max_other_units, 1)
+        other_cities_masks_batch,  # (episode_length * num_envs_per_batch, n_max_other_cities, 1)
+        rnn_hidden_states_batch,  # (1 * num_envs_per_batch, n_rnn_layers, rnn_hidden_dim)
+        actor_type_batch,  # (episode_length * num_envs_per_batch, actor_type_dim)
+        actor_type_masks_batch,  # (episode_length * num_envs_per_batch, actor_type_dim)
+        city_id_batch,  # (episode_length * num_envs_per_batch, 1)
+        city_id_masks_batch,  # (episode_length * num_envs_per_batch, n_max_cities, 1)
+        city_action_type_batch,  # (episode_length * num_envs_per_batch, 1)
+        city_action_type_masks_batch,  # (episode_length * num_envs_per_batch, city_action_type_dim)
+        unit_id_batch,  # (episode_length * num_envs_per_batch, 1)
+        unit_id_masks_batch,  # (episode_length * num_envs_per_batch, n_max_units, 1)
+        unit_action_type_batch,  # (episode_length * num_envs_per_batch, 1)
+        unit_action_type_masks_batch,  # (episode_length * num_envs_per_batch, unit_action_type_dim)
+        gov_action_type_batch,  # (episode_length * num_envs_per_batch, 1)
+        gov_action_type_masks_batch,  # (episode_length * num_envs_per_batch, gov_action_type_dim)
+        masks_batch,  # (episode_length * num_envs_per_batch, 1)
+    ):
+        # encoding step
+        global_encoding_processed, units_encoded, cities_encoded = self.encoding_step(
+            rules_batch,
+            player_batch,
+            other_players_batch,
+            units_batch,
+            cities_batch,
+            other_units_batch,
+            other_cities_batch,
+            map_batch,
+            other_players_masks_batch,
+            units_masks_batch,
+            cities_masks_batch,
+            other_units_masks_batch,
+            other_cities_masks_batch,
+        )
+
+        # rnn step
