@@ -18,8 +18,8 @@ class Buffer:
         self.state_spaces = state_spaces
         self.action_spaces = action_spaces
         # obtain input dimensions. TODO: be consistent with env
-        self.rules_dim = self.state_spaces["rules"].shape[1]
-        self.player_dim = self.state_spaces["player"].shape[1]
+        self.rules_dim = self.state_spaces["rules"].shape[0]
+        self.player_dim = self.state_spaces["player"].shape[0]
         self.other_players_dim = self.state_spaces["other_players"].shape[
             1
         ]  # or Sequence?
