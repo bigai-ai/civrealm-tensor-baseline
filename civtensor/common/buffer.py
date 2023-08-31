@@ -164,14 +164,15 @@ class Buffer:
         )
 
         self.actor_type_output = np.zeros(
-            (self.episode_length, self.n_rollout_threads, self.actor_type_dim),
+            (self.episode_length, self.n_rollout_threads, 1),
             dtype=np.float32,
         )
         self.actor_type_log_probs = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.actor_type_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
+            (self.episode_length, self.n_rollout_threads, self.actor_type_dim),
+            dtype=np.float32,
         )
 
         self.city_id_output = np.zeros(
@@ -485,7 +486,7 @@ class Buffer:
             other_units_masks_batch = _flatten(T, N, self.other_units_masks[:-1, ids])
             other_cities_masks_batch = _flatten(T, N, self.other_cities_masks[:-1, ids])
             rnn_hidden_states_batch = self.rnn_hidden_states[0:1, ids]
-            value_preds_batch = _flatten(T, N, self.value_preds[:-1, ids])
+            old_value_preds_batch = _flatten(T, N, self.value_preds[:-1, ids])
             return_batch = _flatten(T, N, self.returns[:-1, ids])
             adv_targ = _flatten(T, N, advantages[:-1, ids])
             actor_type_batch = _flatten(T, N, self.actor_type_output[:, ids])
@@ -544,7 +545,7 @@ class Buffer:
                 other_units_masks_batch,
                 other_cities_masks_batch,
                 rnn_hidden_states_batch,
-                value_preds_batch,
+                old_value_preds_batch,
                 return_batch,
                 adv_targ,
                 actor_type_batch,

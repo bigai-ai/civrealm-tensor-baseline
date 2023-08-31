@@ -351,7 +351,7 @@ class Runner:
             self.buffer.value_preds[:-1]
         )
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        train_info = self.algo.train(self.buffer, advantages)
+        train_info = self.algo.train(self.buffer, advantages, self.value_normalizer)
         return train_info
 
     @torch.no_grad()

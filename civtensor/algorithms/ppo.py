@@ -1,7 +1,12 @@
 import numpy as np
 import torch
 
-from civtensor.utils.models_tools import update_linear_schedule
+from civtensor.utils.models_tools import (
+    update_linear_schedule,
+    get_grad_norm,
+    huber_loss,
+    mse_loss,
+)
 from civtensor.models.agent import Agent
 from civtensor.utils.envs_tools import check
 
@@ -17,6 +22,15 @@ class PPO:
         self.entropy_coef = args["entropy_coef"]
         self.use_max_grad_norm = args["use_max_grad_norm"]
         self.max_grad_norm = args["max_grad_norm"]
+
+        self.use_clipped_value_loss = args["use_clipped_value_loss"]
+        self.value_loss_coef = args["value_loss_coef"]
+        self.use_huber_loss = args["use_huber_loss"]
+        self.huber_delta = args["huber_delta"]
+
+        self.critic_lr = args["critic_lr"]
+        self.opti_eps = args["opti_eps"]
+        self.weight_decay = args["weight_decay"]
 
         self.lr = args["lr"]
         self.opti_eps = args["opti_eps"]
@@ -40,10 +54,54 @@ class PPO:
         """
         update_linear_schedule(self.optimizer, episode, episodes, self.lr)
 
-    def get_actions_values(self, data):
-        pass
+    def cal_value_loss(
+        self,
+        value_preds_batch,
+        old_value_preds_batch,
+        return_batch,
+        value_normalizer=None,
+    ):
+        """Calculate value function loss.
+        Args:
+            value_preds_batch: (torch.Tensor) value function predictions.
+            old_value_preds_batch: (torch.Tensor) "old" value  predictions from data batch (used for value clip loss)
+            return_batch: (torch.Tensor) reward to go returns.
+            value_normalizer: (ValueNorm) normalize the rewards, denormalize critic outputs.
+        Returns:
+            value_loss: (torch.Tensor) value function loss.
+        """
+        value_pred_clipped = old_value_preds_batch + (
+            value_preds_batch - old_value_preds_batch
+        ).clamp(-self.clip_param, self.clip_param)
+        if value_normalizer is not None:
+            value_normalizer.update(return_batch)
+            error_clipped = (
+                value_normalizer.normalize(return_batch) - value_pred_clipped
+            )
+            error_original = (
+                value_normalizer.normalize(return_batch) - value_preds_batch
+            )
+        else:
+            error_clipped = return_batch - value_pred_clipped
+            error_original = return_batch - value_preds_batch
 
-    def update(self, sample):
+        if self.use_huber_loss:
+            value_loss_clipped = huber_loss(error_clipped, self.huber_delta)
+            value_loss_original = huber_loss(error_original, self.huber_delta)
+        else:
+            value_loss_clipped = mse_loss(error_clipped)
+            value_loss_original = mse_loss(error_original)
+
+        if self.use_clipped_value_loss:
+            value_loss = torch.max(value_loss_original, value_loss_clipped)
+        else:
+            value_loss = value_loss_original
+
+        value_loss = value_loss.mean()
+
+        return value_loss
+
+    def update(self, sample, value_normalizer=None):
         (
             rules_batch,
             player_batch,
@@ -59,7 +117,7 @@ class PPO:
             other_units_masks_batch,
             other_cities_masks_batch,
             rnn_hidden_states_batch,
-            value_preds_batch,
+            old_value_preds_batch,
             return_batch,
             adv_targ,
             actor_type_batch,
@@ -98,7 +156,7 @@ class PPO:
         other_units_masks_batch = check(other_units_masks_batch).to(self.device)
         other_cities_masks_batch = check(other_cities_masks_batch).to(self.device)
         rnn_hidden_states_batch = check(rnn_hidden_states_batch).to(self.device)
-        value_preds_batch = check(value_preds_batch).to(self.device)
+        old_value_preds_batch = check(old_value_preds_batch).to(self.device)
         return_batch = check(return_batch).to(self.device)
         adv_targ = check(adv_targ).to(self.device)
         actor_type_batch = check(actor_type_batch).to(self.device)
@@ -138,15 +196,14 @@ class PPO:
             actor_type_log_probs_batch,
             actor_type_dist_entropy,
             city_id_log_probs_batch,
-            city_id_dist_entropy,
             city_action_type_log_probs_batch,
             city_action_type_dist_entropy,
             unit_id_log_probs_batch,
-            unit_id_dist_entropy,
             unit_action_type_log_probs_batch,
             unit_action_type_dist_entropy,
             gov_action_type_log_probs_batch,
             gov_action_type_dist_entropy,
+            value_preds_batch,
         ) = self.agent.evaluate_actions(
             rules_batch,
             player_batch,
@@ -177,7 +234,83 @@ class PPO:
             masks_batch,
         )
 
-    def train(self, buffer, advantages):
+        action_log_probs_batch = (
+            (actor_type_batch == 0)
+            * (
+                actor_type_log_probs_batch
+                + city_id_log_probs_batch
+                + city_action_type_log_probs_batch
+            )
+            + (actor_type_batch == 1)
+            * (
+                actor_type_log_probs_batch
+                + unit_id_log_probs_batch
+                + unit_action_type_log_probs_batch
+            )
+            + (actor_type_batch == 2)
+            * (actor_type_log_probs_batch + gov_action_type_log_probs_batch)
+            + (actor_type_batch == 3) * (actor_type_log_probs_batch)
+        )
+
+        old_action_log_probs_batch = (
+            (actor_type_batch == 0)
+            * (
+                old_actor_type_log_probs_batch
+                + old_city_id_log_probs_batch
+                + old_city_action_type_log_probs_batch
+            )
+            + (actor_type_batch == 1)
+            * (
+                old_actor_type_log_probs_batch
+                + old_unit_id_log_probs_batch
+                + old_unit_action_type_log_probs_batch
+            )
+            + (actor_type_batch == 2)
+            * (old_actor_type_log_probs_batch + old_gov_action_type_log_probs_batch)
+            + (actor_type_batch == 3) * (old_actor_type_log_probs_batch)
+        )
+
+        dist_entropy = (
+            (actor_type_batch == 0)
+            * (actor_type_dist_entropy + city_action_type_dist_entropy)
+            + (actor_type_batch == 1)
+            * (actor_type_dist_entropy + unit_action_type_dist_entropy)
+            + (actor_type_batch == 2)
+            * (actor_type_dist_entropy + gov_action_type_dist_entropy)
+            + (actor_type_batch == 3) * (actor_type_dist_entropy)
+        )
+
+        ratio = torch.exp(action_log_probs_batch - old_action_log_probs_batch)
+        surr1 = ratio * adv_targ
+        surr2 = (
+            torch.clamp(ratio, 1.0 - self.clip_param, 1.0 + self.clip_param) * adv_targ
+        )
+        policy_loss = -torch.min(surr1, surr2).mean()
+
+        value_loss = self.cal_value_loss(
+            value_preds_batch,
+            old_value_preds_batch,
+            return_batch,
+            value_normalizer=value_normalizer,
+        )
+
+        self.optimizer.zero_grad()
+        (
+            value_loss * self.value_loss_coef
+            + policy_loss
+            - dist_entropy * self.entropy_coef
+        ).backward()
+        if self.use_max_grad_norm:
+            grad_norm = torch.nn.utils.clip_grad_norm_(
+                self.agent.parameters(), self.max_grad_norm
+            )
+        else:
+            grad_norm = get_grad_norm(self.agent.parameters())
+        self.optimizer.step()
+
+        return policy_loss, value_loss, dist_entropy, grad_norm, ratio
+
+    def train(self, buffer, advantages, value_normalizer=None):
         train_info = {}
         train_info["policy_loss"] = 0
         train_info["value_loss"] = 0
@@ -189,13 +322,13 @@ class PPO:
             data_generator = buffer.recurrent_generator(advantages, self.num_mini_batch)
             for sample in data_generator:
                 policy_loss, value_loss, dist_entropy, grad_norm, ratio = self.update(
-                    sample
+                    sample, value_normalizer=value_normalizer
                 )
-                train_info["policy_loss"] += policy_loss
-                train_info["value_loss"] += value_loss
-                train_info["dist_entropy"] += dist_entropy
+                train_info["policy_loss"] += policy_loss.item()
+                train_info["value_loss"] += value_loss.item()
+                train_info["dist_entropy"] += dist_entropy.item()
                 train_info["grad_norm"] += grad_norm
-                train_info["ratio"] += ratio
+                train_info["ratio"] += ratio.mean()
 
         num_updates = self.ppo_epoch * self.num_mini_batch
         for k in train_info.keys():

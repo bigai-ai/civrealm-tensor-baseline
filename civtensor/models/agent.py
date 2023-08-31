@@ -382,13 +382,6 @@ class Agent(nn.Module):
             global_encoding_concat, rnn_hidden_state, mask
         )  # TODO: check is there problems with gradient due to same name used by rnn_hidden_state
 
-        # TODO: add training logic; we may need to extract this into a separate class
-        # rnn_hidden_state: (h, c) where h and c are (n_rnn_layers, batch_size, rnn_hidden_dim)
-        rnn_out, rnn_hidden_state = self.rnn(
-            global_encoding_concat.unsqueeze(0), rnn_hidden_state
-        )  # (1, batch_size, rnn_hidden_dim), ((n_rnn_layers, batch_size, rnn_hidden_dim), (n_rnn_layers, batch_size, rnn_hidden_dim))
-        rnn_out = rnn_out.squeeze(0)  # (batch_size, rnn_hidden_dim)
-
         # output value predictions
         value_pred = self.value_linear(rnn_out)  # (batch_size, 1)
 
@@ -492,7 +485,7 @@ class Agent(nn.Module):
         other_units_masks_batch,  # (episode_length * num_envs_per_batch, n_max_other_units, 1)
         other_cities_masks_batch,  # (episode_length * num_envs_per_batch, n_max_other_cities, 1)
         rnn_hidden_states_batch,  # (1 * num_envs_per_batch, n_rnn_layers, rnn_hidden_dim)
-        actor_type_batch,  # (episode_length * num_envs_per_batch, actor_type_dim)
+        actor_type_batch,  # (episode_length * num_envs_per_batch, 1)
         actor_type_masks_batch,  # (episode_length * num_envs_per_batch, actor_type_dim)
         city_id_batch,  # (episode_length * num_envs_per_batch, 1)
         city_id_masks_batch,  # (episode_length * num_envs_per_batch, n_max_cities, 1)
@@ -523,4 +516,84 @@ class Agent(nn.Module):
             other_cities_masks_batch,
         )
 
+        batch_size = rules_batch.shape[0]
+
         # rnn step
+        global_encoding_concat = global_encoding_processed.view(
+            batch_size, -1
+        )  # (batch_size, 8 * hidden_dim)
+
+        rnn_out, rnn_hidden_states_batch = self.rnn(
+            global_encoding_concat, rnn_hidden_states_batch, masks_batch
+        )  # TODO: check is there problems with gradient due to same name used by rnn_hidden_state
+
+        # output value predictions
+        value_preds_batch = self.value_linear(rnn_out)  # (batch_size, 1)
+
+        # action step
+        # actor type head
+        actor_type_distribution = self.actor_type_head(rnn_out, actor_type_masks_batch)
+        actor_type_log_probs_batch = actor_type_distribution.log_probs(actor_type_batch)
+        actor_type_dist_entropy = actor_type_distribution.entropy().mean()
+
+        # city id head
+        (
+            city_id_log_probs_batch,
+            city_chosen_encoded,
+        ) = self.city_id_head.evaluate_actions(
+            rnn_out, cities_encoded, city_id_masks_batch, city_id_batch
+        )  # (batch_size, 1), (batch_size, hidden_dim)
+
+        # city action type head
+        city_action_input = torch.cat([rnn_out, city_chosen_encoded], dim=-1)
+        chosen_city_action_type_mask = city_action_type_masks_batch[
+            torch.arange(batch_size), city_id_batch.squeeze(), :
+        ]  # TODO: check whether gradient is correct
+        city_action_type_distribution = self.city_action_head(
+            city_action_input, chosen_city_action_type_mask
+        )
+        city_action_type_log_probs_batch = city_action_type_distribution.log_probs(
+            city_action_type_batch
+        )
+        city_action_type_dist_entropy = city_action_type_distribution.entropy().mean()
+
+        # unit id head
+        unit_id_log_probs_batch, unit_chosen_encoded = self.unit_id_head(
+            rnn_out, units_encoded, unit_id_masks_batch, unit_id_batch
+        )  # (batch_size, 1), (batch_size, hidden_dim)
+
+        # unit action type head
+        unit_action_input = torch.cat([rnn_out, unit_chosen_encoded], dim=-1)
+        chosen_unit_action_type_mask = unit_action_type_masks_batch[
+            torch.arange(batch_size), unit_id_batch.squeeze(), :
+        ]  # TODO: check whether gradient is correct
+        unit_action_type_distribution = self.unit_action_head(
+            unit_action_input, chosen_unit_action_type_mask
+        )
+        unit_action_type_log_probs_batch = unit_action_type_distribution.log_probs(
+            unit_action_type_batch
+        )
+        unit_action_type_dist_entropy = unit_action_type_distribution.entropy().mean()
+
+        # gov action type head
+        gov_action_type_distribution = self.gov_action_head(
+            rnn_out, gov_action_type_masks_batch
+        )
+        gov_action_type_log_probs_batch = gov_action_type_distribution.log_probs(
+            gov_action_type_batch
+        )
+        gov_action_type_dist_entropy = gov_action_type_distribution.entropy().mean()
+
+        return (
+            actor_type_log_probs_batch,
+            actor_type_dist_entropy,
+            city_id_log_probs_batch,
+            city_action_type_log_probs_batch,
+            city_action_type_dist_entropy,
+            unit_id_log_probs_batch,
+            unit_action_type_log_probs_batch,
+            unit_action_type_dist_entropy,
+            gov_action_type_log_probs_batch,
+            gov_action_type_dist_entropy,
+            value_preds_batch,
+        )

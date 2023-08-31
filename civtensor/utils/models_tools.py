@@ -24,6 +24,20 @@ def init_device(args):
     return device
 
 
+# pylint: disable-next=invalid-name
+def huber_loss(e, d):
+    """Huber loss."""
+    a = (abs(e) <= d).float()
+    b = (abs(e) > d).float()
+    return a * e**2 / 2 + b * d * (abs(e) - d / 2)
+
+
+# pylint: disable-next=invalid-name
+def mse_loss(e):
+    """MSE loss."""
+    return e**2 / 2
+
+
 def update_linear_schedule(optimizer, epoch, total_num_epochs, initial_lr):
     """Decreases the learning rate linearly
     Args:
@@ -60,3 +74,13 @@ def init(module, weight_init, bias_init, gain=1):
     weight_init(module.weight.data, gain=gain)
     bias_init(module.bias.data)
     return module
+
+
+def get_grad_norm(parameters):
+    """Get gradient norm."""
+    sum_grad = 0
+    for parameter in parameters:
+        if parameter.grad is None:
+            continue
+        sum_grad += parameter.grad.norm() ** 2
+    return math.sqrt(sum_grad)
