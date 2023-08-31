@@ -233,10 +233,10 @@ class Buffer:
             dtype=np.int32,
         )
 
-        self.masks = np.zeros(
+        self.masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.int32
         )
-        self.bad_masks = np.zeros(
+        self.bad_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.int32
         )
 
