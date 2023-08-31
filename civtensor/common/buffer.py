@@ -172,7 +172,7 @@ class Buffer:
         )
         self.actor_type_masks = np.ones(
             (self.episode_length, self.n_rollout_threads, self.actor_type_dim),
-            dtype=np.float32,
+            dtype=np.int32,
         )
 
         self.city_id_output = np.zeros(
