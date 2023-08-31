@@ -30,7 +30,7 @@ state_spaces = {
 }
 
 action_spaces = {
-    "actor_type": Discrete(actor_type_dim),
+    "actor_type": Discrete(actor_type_dim), # actor_type_dim = 4; 0 for city, 1 for unit, 2 for gov, 3 for turn done
     "city_id": Discrete(n_max_cities),
     "city_action_type": Discrete(city_action_type_dim),
     "unit_id": Discrete(n_max_units),
