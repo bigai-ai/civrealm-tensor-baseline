@@ -15,7 +15,7 @@ state_spaces = {
     "cities": Box(low=-inf, high=inf, shape=(n_max_cities, cities_dim), dtype=np.float32),
     "other_units": Box(low=-inf, high=inf, shape=(n_max_other_units, other_units_dim), dtype=np.float32),
     "other_cities": Box(low=-inf, high=inf, shape=(n_max_other_cities, other_cities_dim), dtype=np.float32),
-    "map": Box(low=-inf, high=inf, shape=(x_size, y_size, map_channels), dtype=np.float32),
+    "civmap": Box(low=-inf, high=inf, shape=(x_size, y_size, civmap_channels), dtype=np.float32),
     "other_players_mask": Box(low=-inf, high=inf, shape=(n_max_other_players, 1), dtype=np.int32), 
     "units_mask": Box(low=-inf, high=inf, shape=(n_max_units, 1), dtype=np.int32), 
     "cities_mask": Box(low=-inf, high=inf, shape=(n_max_cities, 1), dtype=np.int32), 
@@ -51,7 +51,7 @@ action_spaces = {
     cities,  # (n_parallel_envs, n_max_cities, cities_dim)
     other_units,  # (n_parallel_envs, n_max_other_units, other_units_dim)
     other_cities,  # (n_parallel_envs, n_max_other_cities, other_cities_dim)
-    map,  # (n_parallel_envs, x_size, y_size, map_input_channels) TODO check input order
+    civmap,  # (n_parallel_envs, x_size, y_size, civmap_channels) TODO check input order
     other_players_mask,  # (n_parallel_envs, n_max_other_players, 1) Note: masks are 0 for padding, 1 for non-padding
     units_mask,  # (n_parallel_envs, n_max_units, 1)
     cities_mask,  # (n_parallel_envs, n_max_cities, 1)

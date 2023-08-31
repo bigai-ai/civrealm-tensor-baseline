@@ -110,7 +110,7 @@ class PPO:
             cities_batch,
             other_units_batch,
             other_cities_batch,
-            map_batch,
+            civmap_batch,
             other_players_masks_batch,
             units_masks_batch,
             cities_masks_batch,
@@ -149,7 +149,7 @@ class PPO:
         cities_batch = check(cities_batch).to(self.device)
         other_units_batch = check(other_units_batch).to(self.device)
         other_cities_batch = check(other_cities_batch).to(self.device)
-        map_batch = check(map_batch).to(self.device)
+        civmap_batch = check(civmap_batch).to(self.device)
         other_players_masks_batch = check(other_players_masks_batch).to(self.device)
         units_masks_batch = check(units_masks_batch).to(self.device)
         cities_masks_batch = check(cities_masks_batch).to(self.device)
@@ -212,7 +212,7 @@ class PPO:
             cities_batch,
             other_units_batch,
             other_cities_batch,
-            map_batch,
+            civmap_batch,
             other_players_masks_batch,
             units_masks_batch,
             cities_masks_batch,

@@ -127,7 +127,7 @@ class Runner:
                         self.buffer.cities_input[step],
                         self.buffer.other_units_input[step],
                         self.buffer.other_cities_input[step],
-                        self.buffer.map_input[step],
+                        self.buffer.civmap_input[step],
                         self.buffer.other_players_masks[step],
                         self.buffer.units_masks[step],
                         self.buffer.cities_masks[step],
@@ -169,7 +169,7 @@ class Runner:
                     cities,
                     other_units,
                     other_cities,
-                    map,
+                    civmap,
                     other_players_mask,
                     units_mask,
                     cities_mask,
@@ -218,7 +218,7 @@ class Runner:
                     cities,
                     other_units,
                     other_cities,
-                    map,
+                    civmap,
                     other_players_mask,
                     units_mask,
                     cities_mask,
@@ -283,7 +283,7 @@ class Runner:
             cities,
             other_units,
             other_cities,
-            map,
+            civmap,
             other_players_mask,
             units_mask,
             cities_mask,
@@ -303,7 +303,7 @@ class Runner:
         self.buffer.cities_input[0] = cities.copy()
         self.buffer.other_units_input[0] = other_units.copy()
         self.buffer.other_cities_input[0] = other_cities.copy()
-        self.buffer.map_input[0] = map.copy()
+        self.buffer.civmap_input[0] = civmap.copy()
         self.buffer.other_players_masks[0] = other_players_mask.copy()
         self.buffer.units_masks[0] = units_mask.copy()
         self.buffer.cities_masks[0] = cities_mask.copy()
@@ -341,7 +341,7 @@ class Runner:
             self.buffer.cities_input[-1],
             self.buffer.other_units_input[-1],
             self.buffer.other_cities_input[-1],
-            self.buffer.map_input[-1],
+            self.buffer.civmap_input[-1],
             self.buffer.other_players_masks[-1],
             self.buffer.units_masks[-1],
             self.buffer.cities_masks[-1],
@@ -384,7 +384,7 @@ class Runner:
             cities,
             other_units,
             other_cities,
-            map,
+            civmap,
             other_players_mask,
             units_mask,
             cities_mask,
@@ -435,7 +435,7 @@ class Runner:
                 cities,
                 other_units,
                 other_cities,
-                map,
+                civmap,
                 other_players_mask,
                 units_mask,
                 cities_mask,
@@ -475,7 +475,7 @@ class Runner:
                 cities,
                 other_units,
                 other_cities,
-                map,
+                civmap,
                 other_players_mask,
                 units_mask,
                 cities_mask,
@@ -524,7 +524,7 @@ class Runner:
                 cities,
                 other_units,
                 other_cities,
-                map,
+                civmap,
                 other_players_mask,
                 units_mask,
                 cities_mask,

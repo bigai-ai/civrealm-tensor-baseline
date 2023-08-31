@@ -34,8 +34,8 @@ class Buffer:
         self.other_cities_dim = self.state_spaces["other_cities"].shape[
             1
         ]  # or Sequence?
-        self.map_dim = self.state_spaces["map"].shape
-        self.xsize, self.ysize, self.map_channels = self.map_dim
+        self.civmap_dim = self.state_spaces["civmap"].shape
+        self.xsize, self.ysize, self.civmap_channels = self.civmap_dim
         self.n_max_other_players = self.state_spaces["other_players"].shape[0]
         self.n_max_units = self.state_spaces["units"].shape[0]
         self.n_max_cities = self.state_spaces["cities"].shape[0]
@@ -102,8 +102,8 @@ class Buffer:
             ),
             dtype=np.float32,
         )
-        self.map_input = np.zeros(
-            (self.episode_length + 1, self.n_rollout_threads, *self.map_dim),
+        self.civmap_input = np.zeros(
+            (self.episode_length + 1, self.n_rollout_threads, *self.civmap_dim),
             dtype=np.float32,
         )
 
@@ -255,7 +255,7 @@ class Buffer:
             cities,
             other_units,
             other_cities,
-            map,
+            civmap,
             other_players_mask,
             units_mask,
             cities_mask,
@@ -293,7 +293,7 @@ class Buffer:
         self.cities_input[self.step + 1] = cities.copy()
         self.other_units_input[self.step + 1] = other_units.copy()
         self.other_cities_input[self.step + 1] = other_cities.copy()
-        self.map_input[self.step + 1] = map.copy()
+        self.civmap_input[self.step + 1] = civmap.copy()
         self.other_players_masks[self.step + 1] = other_players_mask.copy()
         self.units_masks[self.step + 1] = units_mask.copy()
         self.cities_masks[self.step + 1] = cities_mask.copy()
@@ -334,7 +334,7 @@ class Buffer:
         self.cities_input[0] = self.cities_input[-1].copy()
         self.other_units_input[0] = self.other_units_input[-1].copy()
         self.other_cities_input[0] = self.other_cities_input[-1].copy()
-        self.map_input[0] = self.map_input[-1].copy()
+        self.civmap_input[0] = self.civmap_input[-1].copy()
         self.other_players_masks[0] = self.other_players_masks[-1].copy()
         self.units_masks[0] = self.units_masks[-1].copy()
         self.cities_masks[0] = self.cities_masks[-1].copy()
@@ -480,7 +480,7 @@ class Buffer:
             cities_batch = _flatten(T, N, self.cities_input[:-1, ids])
             other_units_batch = _flatten(T, N, self.other_units_input[:-1, ids])
             other_cities_batch = _flatten(T, N, self.other_cities_input[:-1, ids])
-            map_batch = _flatten(T, N, self.map_input[:-1, ids])
+            civmap_batch = _flatten(T, N, self.civmap_input[:-1, ids])
             other_players_masks_batch = _flatten(
                 T, N, self.other_players_masks[:-1, ids]
             )
@@ -541,7 +541,7 @@ class Buffer:
                 cities_batch,
                 other_units_batch,
                 other_cities_batch,
-                map_batch,
+                civmap_batch,
                 other_players_masks_batch,
                 units_masks_batch,
                 cities_masks_batch,

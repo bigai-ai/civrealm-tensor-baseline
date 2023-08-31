@@ -9,7 +9,7 @@ class FreecivTensorLogger:
         self.args = args
         self.algo_args = algo_args
         self.env_args = env_args
-        self.task_name = env_args["map_name"]
+        self.task_name = env_args["civmap_name"]
         self.writter = writter
         self.run_dir = run_dir
         self.log_file = open(
@@ -39,7 +39,7 @@ class FreecivTensorLogger:
             cities,
             other_units,
             other_cities,
-            map,
+            civmap,
             other_players_mask,
             units_mask,
             cities_mask,
@@ -141,7 +141,7 @@ class FreecivTensorLogger:
             cities,
             other_units,
             other_cities,
-            map,
+            civmap,
             other_players_mask,
             units_mask,
             cities_mask,

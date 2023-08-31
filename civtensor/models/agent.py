@@ -40,7 +40,7 @@ class Agent(nn.Module):
         self.other_cities_dim = self.state_spaces["other_cities"].shape[
             1
         ]  # or Sequence?
-        self.map_dim = self.state_spaces["map"].shape
+        self.civmap_dim = self.state_spaces["civmap"].shape
 
         # obtain output dimensions. TODO: be consistent with env
         self.actor_type_dim = self.action_spaces["actor_type"].n
@@ -105,7 +105,7 @@ class Agent(nn.Module):
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
-        self.map_encoder = nn.Sequential(
+        self.civmap_encoder = nn.Sequential(
             nn.Conv2d(112, 64, 5, 2),
             nn.BatchNorm2d(64),
             nn.ReLU(),
@@ -178,7 +178,7 @@ class Agent(nn.Module):
         cities,
         other_units,
         other_cities,
-        map,
+        civmap,
         other_players_mask,
         units_mask,
         cities_mask,
@@ -194,16 +194,16 @@ class Agent(nn.Module):
             cities: (batch_size, n_max_cities, cities_dim)
             other_units: (batch_size, n_max_other_units, other_units_dim)
             other_cities: (batch_size, n_max_other_cities, other_cities_dim)
-            map: (batch_size, x_size, y_size, map_input_channels) TODO check input order
+            civmap: (batch_size, x_size, y_size, civmap_channels) TODO check input order
             other_players_mask: (batch_size, n_max_other_players, 1) Note: masks are 0 for padding, 1 for non-padding
             units_mask: (batch_size, n_max_units, 1)
             cities_mask: (batch_size, n_max_cities, 1)
             other_units_mask: (batch_size, n_max_other_units, 1)
             other_cities_mask: (batch_size, n_max_other_cities, 1)
         """
-        map = map.permute(
+        civmap = civmap.permute(
             0, 3, 1, 2
-        )  # (batch_size, map_input_channels, x_size, y_size)
+        )  # (batch_size, civmap_channels, x_size, y_size)
 
         # encoding step
         rules_encoded = self.rules_encoder(rules)  # (batch_size, hidden_dim)
@@ -256,7 +256,7 @@ class Agent(nn.Module):
             other_cities_embedding, other_cities_mask
         )  # (batch_size, n_max_other_cities, hidden_dim)
 
-        map_encoded = self.map_encoder(map)  # (batch_size, hidden_dim)
+        civmap_encoded = self.civmap_encoder(civmap)  # (batch_size, hidden_dim)
 
         # global transformer step
         other_players_global_encoding = torch.sum(
@@ -292,7 +292,7 @@ class Agent(nn.Module):
                 cities_global_encoding,
                 other_units_global_encoding,
                 other_cities_global_encoding,
-                map_encoded,
+                civmap_encoded,
             ],
             dim=1,
         )  # (batch_size, 8, hidden_dim)
@@ -312,7 +312,7 @@ class Agent(nn.Module):
         cities,
         other_units,
         other_cities,
-        map,
+        civmap,
         other_players_mask,
         units_mask,
         cities_mask,
@@ -337,7 +337,7 @@ class Agent(nn.Module):
             cities: (batch_size, n_max_cities, cities_dim)
             other_units: (batch_size, n_max_other_units, other_units_dim)
             other_cities: (batch_size, n_max_other_cities, other_cities_dim)
-            map: (batch_size, x_size, y_size, map_input_channels) TODO check input order
+            civmap: (batch_size, x_size, y_size, civmap_channels) TODO check input order
             other_players_mask: (batch_size, n_max_other_players, 1) Note: masks are 0 for padding, 1 for non-padding
             units_mask: (batch_size, n_max_units, 1)
             cities_mask: (batch_size, n_max_cities, 1)
@@ -363,7 +363,7 @@ class Agent(nn.Module):
             cities,
             other_units,
             other_cities,
-            map,
+            civmap,
             other_players_mask,
             units_mask,
             cities_mask,
@@ -478,7 +478,7 @@ class Agent(nn.Module):
         cities_batch,  # (episode_length * num_envs_per_batch, n_max_cities, cities_dim)
         other_units_batch,  # (episode_length * num_envs_per_batch, n_max_other_units, other_units_dim)
         other_cities_batch,  # (episode_length * num_envs_per_batch, n_max_other_cities, other_cities_dim)
-        map_batch,  # (episode_length * num_envs_per_batch, x_size, y_size, map_input_channels)
+        civmap_batch,  # (episode_length * num_envs_per_batch, x_size, y_size, civmap_channels)
         other_players_masks_batch,  # (episode_length * num_envs_per_batch, n_max_other_players, 1)
         units_masks_batch,  # (episode_length * num_envs_per_batch, n_max_units, 1)
         cities_masks_batch,  # (episode_length * num_envs_per_batch, n_max_cities, 1)
@@ -508,7 +508,7 @@ class Agent(nn.Module):
             cities_batch,
             other_units_batch,
             other_cities_batch,
-            map_batch,
+            civmap_batch,
             other_players_masks_batch,
             units_masks_batch,
             cities_masks_batch,

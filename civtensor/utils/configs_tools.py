@@ -47,7 +47,7 @@ def update_args(unparsed_dict, *args):
 
 def init_dir(env, env_args, algo, exp_name, seed, logger_path):
     """Init directory for saving results."""
-    task = env_args["map_name"]
+    task = env_args["civmap_name"]
     hms_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
     results_path = os.path.join(
         logger_path,
