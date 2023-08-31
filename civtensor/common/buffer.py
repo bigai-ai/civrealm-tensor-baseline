@@ -242,6 +242,9 @@ class Buffer:
 
         self.step = 0
 
+    def get_mean_rewards(self):
+        return np.mean(self.rewards)
+
     def insert(self, data):
         """Insert data into buffer."""
         (
