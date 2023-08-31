@@ -349,7 +349,7 @@ class Agent(nn.Module):
             unit_id_mask: (batch_size, n_max_units, 1)
             unit_action_type_mask: (batch_size, n_max_units, unit_action_type_dim)
             gov_action_type_mask: (batch_size, gov_action_type_dim)
-            rnn_hidden_state: (h, c) where h and c are (n_rnn_layers, batch_size, rnn_hidden_dim)
+            rnn_hidden_state: (batch_size, n_rnn_layers, rnn_hidden_dim)
             mask: (batch_size, 1)
             deterministic: if True use argmax, else sample from distribution
         """
