@@ -89,7 +89,7 @@ algo:
   value_loss_coef: 1
   # whether to clip gradient norm
   use_max_grad_norm: True
-  # max gradient norm
+  # max gradient norm (0.5?)
   max_grad_norm: 10.0
   # whether to use Generalized Advantage Estimation (GAE)
   use_gae: True
