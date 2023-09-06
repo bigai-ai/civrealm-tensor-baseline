@@ -20,9 +20,9 @@ def get_defaults_yaml_args(algo, env):
     env_cfg_path = os.path.join(base_path, "configs", "envs_cfgs", f"{env}.yaml")
 
     with open(algo_cfg_path, "r", encoding="utf-8") as file:
-        algo_args = yaml.load(file, Loader=yaml.FullLoader)
+        algo_args = cont if (cont:=yaml.load(file, Loader=yaml.FullLoader)) else {}
     with open(env_cfg_path, "r", encoding="utf-8") as file:
-        env_args = yaml.load(file, Loader=yaml.FullLoader)
+        env_args = cont if (cont:=yaml.load(file, Loader=yaml.FullLoader)) else {}
     return algo_args, env_args
 
 
@@ -47,7 +47,7 @@ def update_args(unparsed_dict, *args):
 
 def init_dir(env, env_args, algo, exp_name, seed, logger_path):
     """Init directory for saving results."""
-    task = env_args["civmap_name"]
+    task = env_args.get("task_name", "./") if env_args else "./"
     hms_time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
     results_path = os.path.join(
         logger_path,

@@ -12,7 +12,7 @@ from civtensor.utils.envs_tools import check
 
 
 class PPO:
-    def __init__(self, args, state_spaces, action_spaces, device=torch.device("cpu")):
+    def __init__(self, args, observation_spaces, action_spaces, device=torch.device("cpu")):
         self.args = args
         self.device = device
 
@@ -35,10 +35,10 @@ class PPO:
         self.lr = args["lr"]
         self.opti_eps = args["opti_eps"]
         self.weight_decay = args["weight_decay"]
-        self.state_spaces = state_spaces
+        self.observation_spaces = observation_spaces
         self.action_spaces = action_spaces
 
-        self.agent = Agent(args, state_spaces, action_spaces, device=device)
+        self.agent = Agent(args, observation_spaces, action_spaces, device=device)
         self.optimizer = torch.optim.Adam(
             self.agent.parameters(),
             lr=self.lr,
@@ -105,17 +105,17 @@ class PPO:
         (
             rules_batch,
             player_batch,
-            other_players_batch,
-            units_batch,
-            cities_batch,
-            other_units_batch,
-            other_cities_batch,
-            civmap_batch,
-            other_players_masks_batch,
-            units_masks_batch,
-            cities_masks_batch,
-            other_units_masks_batch,
-            other_cities_masks_batch,
+            others_player_batch,
+            unit_batch,
+            city_batch,
+            others_unit_batch,
+            others_city_batch,
+            map_batch,
+            others_player_masks_batch,
+            unit_masks_batch,
+            city_masks_batch,
+            others_unit_masks_batch,
+            others_city_masks_batch,
             rnn_hidden_states_batch,
             old_value_preds_batch,
             return_batch,
@@ -144,17 +144,17 @@ class PPO:
 
         rules_batch = check(rules_batch).to(self.device)
         player_batch = check(player_batch).to(self.device)
-        other_players_batch = check(other_players_batch).to(self.device)
-        units_batch = check(units_batch).to(self.device)
-        cities_batch = check(cities_batch).to(self.device)
-        other_units_batch = check(other_units_batch).to(self.device)
-        other_cities_batch = check(other_cities_batch).to(self.device)
-        civmap_batch = check(civmap_batch).to(self.device)
-        other_players_masks_batch = check(other_players_masks_batch).to(self.device)
-        units_masks_batch = check(units_masks_batch).to(self.device)
-        cities_masks_batch = check(cities_masks_batch).to(self.device)
-        other_units_masks_batch = check(other_units_masks_batch).to(self.device)
-        other_cities_masks_batch = check(other_cities_masks_batch).to(self.device)
+        others_player_batch = check(others_player_batch).to(self.device)
+        unit_batch = check(unit_batch).to(self.device)
+        city_batch = check(city_batch).to(self.device)
+        others_unit_batch = check(others_unit_batch).to(self.device)
+        others_city_batch = check(others_city_batch).to(self.device)
+        map_batch = check(map_batch).to(self.device)
+        others_player_masks_batch = check(others_player_masks_batch).to(self.device)
+        unit_masks_batch = check(unit_masks_batch).to(self.device)
+        city_masks_batch = check(city_masks_batch).to(self.device)
+        others_unit_masks_batch = check(others_unit_masks_batch).to(self.device)
+        others_city_masks_batch = check(others_city_masks_batch).to(self.device)
         rnn_hidden_states_batch = check(rnn_hidden_states_batch).to(self.device)
         old_value_preds_batch = check(old_value_preds_batch).to(self.device)
         return_batch = check(return_batch).to(self.device)
@@ -207,17 +207,17 @@ class PPO:
         ) = self.agent.evaluate_actions(
             rules_batch,
             player_batch,
-            other_players_batch,
-            units_batch,
-            cities_batch,
-            other_units_batch,
-            other_cities_batch,
-            civmap_batch,
-            other_players_masks_batch,
-            units_masks_batch,
-            cities_masks_batch,
-            other_units_masks_batch,
-            other_cities_masks_batch,
+            others_player_batch,
+            unit_batch,
+            city_batch,
+            others_unit_batch,
+            others_city_batch,
+            map_batch,
+            others_player_masks_batch,
+            unit_masks_batch,
+            city_masks_batch,
+            others_unit_masks_batch,
+            others_city_masks_batch,
             rnn_hidden_states_batch,
             actor_type_batch,
             actor_type_masks_batch,

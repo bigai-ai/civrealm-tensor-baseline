@@ -1,1 +1,1 @@
-python train.py --algo ppo --env freeciv_tensor_env --exp_name debug
+python -m train --algo ppo --env freeciv_tensor_env --exp_name debug

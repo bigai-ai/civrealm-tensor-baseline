@@ -7,6 +7,8 @@ from multiprocessing import Process, Pipe
 from abc import ABC, abstractmethod
 import copy
 
+from gymnasium import Wrapper
+from freeciv_gym.envs.freeciv_wrapper.utils import expand_dim
 
 def tile_images(img_nhwc):
     """
@@ -294,6 +296,40 @@ class ShareSubprocVecEnv(ShareVecEnv):
             p.join()
         self.closed = True
 
+batchdict = lambda obs_dict: {key: val[np.newaxis,...] for key,val in obs_dict.items()}
+debatchdict = lambda obs_dict: {key: val[0] for key,val in obs_dict.items()}
+
+# usable single env
+class DummyVecEnv(Wrapper):
+    def __init__(self, env_fns):
+        super().__init__(env_fns())
+        print("Initializing DummyVecEnv")
+        self._cached_reset_result = self.env.reset()
+        self.first_reset = True
+        print("Complete Initializing DummyVecEnv")
+
+    @property
+    def observation_spaces(self):
+        return self.observation_space
+
+    @property
+    def action_spaces(self):
+        return self.action_space
+
+    def reset(self):
+        if self.first_reset:
+            obs, info = self._cached_reset_result
+            return obs, info
+        observation, info = self.env.reset()
+        return batchdict(observation), info
+
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(
+            debatchdict(action)
+        )
+        if terminated:
+            obs, info = self.env.reset()
+        return batchdict(obs), np.array([reward]), np.array([terminated]), truncated, info 
 
 # single env
 class ShareDummyVecEnv(ShareVecEnv):

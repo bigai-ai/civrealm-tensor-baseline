@@ -9,7 +9,7 @@ def _flatten_helper(T, N, _tensor):
 
 
 class Buffer:
-    def __init__(self, args, state_spaces, action_spaces):
+    def __init__(self, args, observation_spaces, action_spaces):
         # init parameters
         self.episode_length = args["episode_length"]
         self.n_rollout_threads = args["n_rollout_threads"]
@@ -20,27 +20,27 @@ class Buffer:
         self.use_gae = args["use_gae"]
         self.use_proper_time_limits = args["use_proper_time_limits"]
 
-        self.state_spaces = state_spaces
+        self.observation_spaces = observation_spaces
         self.action_spaces = action_spaces
         # obtain input dimensions. TODO: be consistent with env
-        self.rules_dim = self.state_spaces["rules"].shape[0]
-        self.player_dim = self.state_spaces["player"].shape[0]
-        self.other_players_dim = self.state_spaces["other_players"].shape[
+        self.rules_dim = self.observation_spaces["rules"].shape[0]
+        self.player_dim = self.observation_spaces["player"].shape[0]
+        self.others_player_dim = self.observation_spaces["others_player"].shape[
             1
         ]  # or Sequence?
-        self.units_dim = self.state_spaces["units"].shape[1]  # or Sequence?
-        self.cities_dim = self.state_spaces["cities"].shape[1]  # or Sequence?
-        self.other_units_dim = self.state_spaces["other_units"].shape[1]  # or Sequence?
-        self.other_cities_dim = self.state_spaces["other_cities"].shape[
+        self.unit_dim = self.observation_spaces["unit"].shape[1]  # or Sequence?
+        self.city_dim = self.observation_spaces["city"].shape[1]  # or Sequence?
+        self.others_unit_dim = self.observation_spaces["others_unit"].shape[1]  # or Sequence?
+        self.others_city_dim = self.observation_spaces["others_city"].shape[
             1
         ]  # or Sequence?
-        self.civmap_dim = self.state_spaces["civmap"].shape
-        self.xsize, self.ysize, self.civmap_channels = self.civmap_dim
-        self.n_max_other_players = self.state_spaces["other_players"].shape[0]
-        self.n_max_units = self.state_spaces["units"].shape[0]
-        self.n_max_cities = self.state_spaces["cities"].shape[0]
-        self.n_max_other_units = self.state_spaces["other_units"].shape[0]
-        self.n_max_other_cities = self.state_spaces["other_cities"].shape[0]
+        self.map_dim = self.observation_spaces["map"].shape
+        self.xsize, self.ysize, self.map_channels = self.map_dim
+        self.n_max_others_player = self.observation_spaces["others_player"].shape[0]
+        self.n_max_unit = self.observation_spaces["unit"].shape[0]
+        self.n_max_city = self.observation_spaces["city"].shape[0]
+        self.n_max_others_unit = self.observation_spaces["others_unit"].shape[0]
+        self.n_max_others_city = self.observation_spaces["others_city"].shape[0]
 
         # obtain output dimensions. TODO: be consistent with env
         self.actor_type_dim = self.action_spaces["actor_type"].n
@@ -57,87 +57,87 @@ class Buffer:
             (self.episode_length + 1, self.n_rollout_threads, self.player_dim),
             dtype=np.float32,
         )
-        self.other_players_input = np.zeros(
+        self.others_player_input = np.zeros(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_other_players,
-                self.other_players_dim,
+                self.n_max_others_player,
+                self.others_player_dim,
             ),
             dtype=np.float32,
         )
-        self.units_input = np.zeros(
+        self.unit_input = np.zeros(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_units,
-                self.units_dim,
+                self.n_max_unit,
+                self.unit_dim,
             ),
             dtype=np.float32,
         )
-        self.cities_input = np.zeros(
+        self.city_input = np.zeros(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_cities,
-                self.cities_dim,
+                self.n_max_city,
+                self.city_dim,
             ),
             dtype=np.float32,
         )
-        self.other_units_input = np.zeros(
+        self.others_unit_input = np.zeros(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_other_units,
-                self.other_units_dim,
+                self.n_max_others_unit,
+                self.others_unit_dim,
             ),
             dtype=np.float32,
         )
-        self.other_cities_input = np.zeros(
+        self.others_city_input = np.zeros(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_other_cities,
-                self.other_cities_dim,
+                self.n_max_others_city,
+                self.others_city_dim,
             ),
             dtype=np.float32,
         )
-        self.civmap_input = np.zeros(
-            (self.episode_length + 1, self.n_rollout_threads, *self.civmap_dim),
+        self.map_input = np.zeros(
+            (self.episode_length + 1, self.n_rollout_threads, *self.map_dim),
             dtype=np.float32,
         )
 
-        self.other_players_masks = np.ones(
+        self.others_player_masks = np.ones(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_other_players,
+                self.n_max_others_player,
                 1,
             ),
             dtype=np.int32,
         )
-        self.units_masks = np.ones(
-            (self.episode_length + 1, self.n_rollout_threads, self.n_max_units, 1),
+        self.unit_masks = np.ones(
+            (self.episode_length + 1, self.n_rollout_threads, self.n_max_unit, 1),
             dtype=np.int32,
         )
-        self.cities_masks = np.ones(
-            (self.episode_length + 1, self.n_rollout_threads, self.n_max_cities, 1),
+        self.city_masks = np.ones(
+            (self.episode_length + 1, self.n_rollout_threads, self.n_max_city, 1),
             dtype=np.int32,
         )
-        self.other_units_masks = np.ones(
+        self.others_unit_masks = np.ones(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_other_units,
+                self.n_max_others_unit,
                 1,
             ),
             dtype=np.int32,
         )
-        self.other_cities_masks = np.ones(
+        self.others_city_masks = np.ones(
             (
                 self.episode_length + 1,
                 self.n_rollout_threads,
-                self.n_max_other_cities,
+                self.n_max_others_city,
                 1,
             ),
             dtype=np.int32,
@@ -182,7 +182,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.city_id_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.n_max_cities, 1),
+            (self.episode_length, self.n_rollout_threads, self.n_max_city, 1),
             dtype=np.int32,
         )
 
@@ -194,7 +194,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.city_action_type_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.city_action_type_dim),
+            (self.episode_length, self.n_rollout_threads, self.n_max_city, self.city_action_type_dim),
             dtype=np.int32,
         )
 
@@ -205,7 +205,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.unit_id_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.n_max_units, 1),
+            (self.episode_length, self.n_rollout_threads, self.n_max_unit, 1),
             dtype=np.int32,
         )
 
@@ -217,7 +217,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.unit_action_type_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.unit_action_type_dim),
+            (self.episode_length, self.n_rollout_threads, self.n_max_unit, self.unit_action_type_dim),
             dtype=np.int32,
         )
 
@@ -250,17 +250,17 @@ class Buffer:
         (
             rules,
             player,
-            other_players,
-            units,
-            cities,
-            other_units,
-            other_cities,
-            civmap,
-            other_players_mask,
-            units_mask,
-            cities_mask,
-            other_units_mask,
-            other_cities_mask,
+            others_player,
+            unit,
+            city,
+            others_unit,
+            others_city,
+            map,
+            others_player_mask,
+            unit_mask,
+            city_mask,
+            others_unit_mask,
+            others_city_mask,
             rnn_hidden_state,
             actor_type,
             actor_type_log_prob,
@@ -288,17 +288,17 @@ class Buffer:
 
         self.rules_input[self.step + 1] = rules.copy()
         self.player_input[self.step + 1] = player.copy()
-        self.other_players_input[self.step + 1] = other_players.copy()
-        self.units_input[self.step + 1] = units.copy()
-        self.cities_input[self.step + 1] = cities.copy()
-        self.other_units_input[self.step + 1] = other_units.copy()
-        self.other_cities_input[self.step + 1] = other_cities.copy()
-        self.civmap_input[self.step + 1] = civmap.copy()
-        self.other_players_masks[self.step + 1] = other_players_mask.copy()
-        self.units_masks[self.step + 1] = units_mask.copy()
-        self.cities_masks[self.step + 1] = cities_mask.copy()
-        self.other_units_masks[self.step + 1] = other_units_mask.copy()
-        self.other_cities_masks[self.step + 1] = other_cities_mask.copy()
+        self.others_player_input[self.step + 1] = others_player.copy()
+        self.unit_input[self.step + 1] = unit.copy()
+        self.city_input[self.step + 1] = city.copy()
+        self.others_unit_input[self.step + 1] = others_unit.copy()
+        self.others_city_input[self.step + 1] = others_city.copy()
+        self.map_input[self.step + 1] = map.copy()
+        self.others_player_masks[self.step + 1] = others_player_mask.copy()
+        self.unit_masks[self.step + 1] = unit_mask.copy()
+        self.city_masks[self.step + 1] = city_mask.copy()
+        self.others_unit_masks[self.step + 1] = others_unit_mask.copy()
+        self.others_city_masks[self.step + 1] = others_city_mask.copy()
         self.rnn_hidden_states[self.step + 1] = rnn_hidden_state.copy()
         self.actor_type_output[self.step] = actor_type.copy()
         self.actor_type_log_probs[self.step] = actor_type_log_prob.copy()
@@ -329,17 +329,17 @@ class Buffer:
         """After an update, copy the data at the last step to the first position of the buffer."""
         self.rules_input[0] = self.rules_input[-1].copy()
         self.player_input[0] = self.player_input[-1].copy()
-        self.other_players_input[0] = self.other_players_input[-1].copy()
-        self.units_input[0] = self.units_input[-1].copy()
-        self.cities_input[0] = self.cities_input[-1].copy()
-        self.other_units_input[0] = self.other_units_input[-1].copy()
-        self.other_cities_input[0] = self.other_cities_input[-1].copy()
-        self.civmap_input[0] = self.civmap_input[-1].copy()
-        self.other_players_masks[0] = self.other_players_masks[-1].copy()
-        self.units_masks[0] = self.units_masks[-1].copy()
-        self.cities_masks[0] = self.cities_masks[-1].copy()
-        self.other_units_masks[0] = self.other_units_masks[-1].copy()
-        self.other_cities_masks[0] = self.other_cities_masks[-1].copy()
+        self.others_player_input[0] = self.others_player_input[-1].copy()
+        self.unit_input[0] = self.unit_input[-1].copy()
+        self.city_input[0] = self.city_input[-1].copy()
+        self.others_unit_input[0] = self.others_unit_input[-1].copy()
+        self.others_city_input[0] = self.others_city_input[-1].copy()
+        self.map_input[0] = self.map_input[-1].copy()
+        self.others_player_masks[0] = self.others_player_masks[-1].copy()
+        self.unit_masks[0] = self.unit_masks[-1].copy()
+        self.city_masks[0] = self.city_masks[-1].copy()
+        self.others_unit_masks[0] = self.others_unit_masks[-1].copy()
+        self.others_city_masks[0] = self.others_city_masks[-1].copy()
         self.rnn_hidden_states[0] = self.rnn_hidden_states[-1].copy()
         self.actor_type_masks[0] = self.actor_type_masks[-1].copy()
         self.city_id_masks[0] = self.city_id_masks[-1].copy()
@@ -475,19 +475,19 @@ class Buffer:
             ids = perm[start_id : start_id + num_envs_per_batch]
             rules_batch = _flatten(T, N, self.rules_input[:-1, ids])
             player_batch = _flatten(T, N, self.player_input[:-1, ids])
-            other_players_batch = _flatten(T, N, self.other_players_input[:-1, ids])
-            units_batch = _flatten(T, N, self.units_input[:-1, ids])
-            cities_batch = _flatten(T, N, self.cities_input[:-1, ids])
-            other_units_batch = _flatten(T, N, self.other_units_input[:-1, ids])
-            other_cities_batch = _flatten(T, N, self.other_cities_input[:-1, ids])
-            civmap_batch = _flatten(T, N, self.civmap_input[:-1, ids])
-            other_players_masks_batch = _flatten(
-                T, N, self.other_players_masks[:-1, ids]
+            others_player_batch = _flatten(T, N, self.others_player_input[:-1, ids])
+            unit_batch = _flatten(T, N, self.unit_input[:-1, ids])
+            city_batch = _flatten(T, N, self.city_input[:-1, ids])
+            others_unit_batch = _flatten(T, N, self.others_unit_input[:-1, ids])
+            others_city_batch = _flatten(T, N, self.others_city_input[:-1, ids])
+            map_batch = _flatten(T, N, self.map_input[:-1, ids])
+            others_player_masks_batch = _flatten(
+                T, N, self.others_player_masks[:-1, ids]
             )
-            units_masks_batch = _flatten(T, N, self.units_masks[:-1, ids])
-            cities_masks_batch = _flatten(T, N, self.cities_masks[:-1, ids])
-            other_units_masks_batch = _flatten(T, N, self.other_units_masks[:-1, ids])
-            other_cities_masks_batch = _flatten(T, N, self.other_cities_masks[:-1, ids])
+            unit_masks_batch = _flatten(T, N, self.unit_masks[:-1, ids])
+            city_masks_batch = _flatten(T, N, self.city_masks[:-1, ids])
+            others_unit_masks_batch = _flatten(T, N, self.others_unit_masks[:-1, ids])
+            others_city_masks_batch = _flatten(T, N, self.others_city_masks[:-1, ids])
             rnn_hidden_states_batch = self.rnn_hidden_states[0:1, ids]
             old_value_preds_batch = _flatten(T, N, self.value_preds[:-1, ids])
             return_batch = _flatten(T, N, self.returns[:-1, ids])
@@ -536,17 +536,17 @@ class Buffer:
             yield (
                 rules_batch,
                 player_batch,
-                other_players_batch,
-                units_batch,
-                cities_batch,
-                other_units_batch,
-                other_cities_batch,
-                civmap_batch,
-                other_players_masks_batch,
-                units_masks_batch,
-                cities_masks_batch,
-                other_units_masks_batch,
-                other_cities_masks_batch,
+                others_player_batch,
+                unit_batch,
+                city_batch,
+                others_unit_batch,
+                others_city_batch,
+                map_batch,
+                others_player_masks_batch,
+                unit_masks_batch,
+                city_masks_batch,
+                others_unit_masks_batch,
+                others_city_masks_batch,
                 rnn_hidden_states_batch,
                 old_value_preds_batch,
                 return_batch,

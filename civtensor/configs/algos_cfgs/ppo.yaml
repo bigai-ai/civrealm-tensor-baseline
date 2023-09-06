@@ -13,7 +13,7 @@ device:
   torch_threads: 4
 train:
   # number of parallel environments for training data collection
-  n_rollout_threads: 20
+  n_rollout_threads: 1
   # number of total training steps
   num_env_steps: 10000000
   # number of steps per environment per training data collection
@@ -34,7 +34,7 @@ eval:
   # whether to use evaluation
   use_eval: True
   # number of parallel environments for evaluation
-  n_eval_rollout_threads: 10
+  n_eval_rollout_threads: 1
   # number of episodes per evaluation
   eval_episodes: 20
 render:
@@ -79,6 +79,9 @@ algo:
   use_clipped_value_loss: True
   # clip parameter
   clip_param: 0.2
+  # TODO: added because PPO requests this rather the latter two
+  # number of mini-batches per epoch
+  num_mini_batch: 1
   # number of mini-batches per epoch for actor update
   actor_num_mini_batch: 1
   # number of mini-batches per epoch for critic update

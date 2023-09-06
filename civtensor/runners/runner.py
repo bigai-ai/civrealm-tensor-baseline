@@ -32,7 +32,9 @@ class Runner:
             algo_args["seed"]["seed"],
             logger_path=algo_args["logger"]["log_dir"],
         )
+        print("creating log directory...")
         save_config(args, algo_args, env_args, self.run_dir)
+        print("config saved...")
         setproctitle.setproctitle(
             str(args["algo"]) + "-" + str(args["env"]) + "-" + str(args["exp_name"])
         )
@@ -41,34 +43,36 @@ class Runner:
             args["env"],
             algo_args["seed"]["seed"],
             algo_args["train"]["n_rollout_threads"],
-            env_args,
+            env_args["env_args"],
         )
-        self.eval_envs = (
-            make_eval_env(
-                args["env"],
-                algo_args["seed"]["seed"],
-                algo_args["train"]["n_eval_rollout_threads"],
-                env_args,
-            )
-            if algo_args["eval"]["use_eval"]
-            else None
-        )
+        # self.eval_envs = (
+        #     make_eval_env(
+        #         args["env"],
+        #         algo_args["seed"]["seed"],
+        #         algo_args["train"]["n_eval_rollout_threads"],
+        #         env_args,
+        #     )
+        #     if algo_args["eval"]["use_eval"]
+        #     else None
+        # )
 
-        print("state_spaces: ", self.envs.state_spaces)
+        print("observation_spaces: ", self.envs.observation_spaces)
         print("action_spaces: ", self.envs.action_spaces)
 
         self.algo = PPO(
             {**algo_args["model"], **algo_args["algo"]},
-            self.envs.state_spaces,
+            self.envs.observation_spaces,
             self.envs.action_spaces,
             device=self.device,
         )
+        print("Initialized PPO")
 
         self.buffer = Buffer(
             {**algo_args["train"], **algo_args["model"], **algo_args["algo"]},
-            self.envs.state_spaces,
+            self.envs.observation_spaces,
             self.envs.action_spaces,
         )
+        print("Initialized Buffer")
 
         if self.algo_args["train"]["use_valuenorm"] is True:
             self.value_normalizer = ValueNorm(1, device=self.device)
@@ -78,6 +82,7 @@ class Runner:
         self.logger = FreecivTensorLogger(
             args, algo_args, env_args, self.writter, self.run_dir
         )
+        print("Initialized logger")
         if self.algo_args["train"]["model_dir"] is not None:  # restore model
             self.restore()
 
@@ -92,6 +97,7 @@ class Runner:
         )
 
         self.logger.init(episodes)
+        print("start logging")
 
         for episode in range(1, episodes + 1):
             if self.algo_args["train"][
@@ -122,17 +128,17 @@ class Runner:
                     ) = self.algo.agent(
                         self.buffer.rules_input[step],
                         self.buffer.player_input[step],
-                        self.buffer.other_players_input[step],
-                        self.buffer.units_input[step],
-                        self.buffer.cities_input[step],
-                        self.buffer.other_units_input[step],
-                        self.buffer.other_cities_input[step],
-                        self.buffer.civmap_input[step],
-                        self.buffer.other_players_masks[step],
-                        self.buffer.units_masks[step],
-                        self.buffer.cities_masks[step],
-                        self.buffer.other_units_masks[step],
-                        self.buffer.other_cities_masks[step],
+                        self.buffer.others_player_input[step],
+                        self.buffer.unit_input[step],
+                        self.buffer.city_input[step],
+                        self.buffer.others_unit_input[step],
+                        self.buffer.others_city_input[step],
+                        self.buffer.map_input[step],
+                        self.buffer.others_player_masks[step],
+                        self.buffer.unit_masks[step],
+                        self.buffer.city_masks[step],
+                        self.buffer.others_unit_masks[step],
+                        self.buffer.others_city_masks[step],
                         self.buffer.actor_type_masks[step],
                         self.buffer.city_id_masks[step],
                         self.buffer.city_action_type_masks[step],
@@ -161,88 +167,67 @@ class Runner:
                 value_pred = _t2n(value_pred)
                 rnn_hidden_state = _t2n(rnn_hidden_state)
 
-                (
-                    rules,
-                    player,
-                    other_players,
-                    units,
-                    cities,
-                    other_units,
-                    other_cities,
-                    civmap,
-                    other_players_mask,
-                    units_mask,
-                    cities_mask,
-                    other_units_mask,
-                    other_cities_mask,
-                    actor_type_mask,
-                    city_id_mask,
-                    city_action_type_mask,
-                    unit_id_mask,
-                    unit_action_type_mask,
-                    gov_action_type_mask,
-                    reward,
-                    term,
-                    trunc,
-                ) = self.envs.step(
-                    actor_type,
-                    city_id,
-                    city_action_type,
-                    unit_id,
-                    unit_action_type,
-                    gov_action_type,
+                obs, reward, term, trunc, info  = self.envs.step(
+                    {
+                        "actor_type": actor_type,
+                        "city_id": city_id,
+                        "city_action_type": city_action_type,
+                        "unit_id": unit_id,
+                        "unit_action_type": unit_action_type,
+                        "gov_action_type": gov_action_type,
+                    }
                 )  # no info at the moment
 
                 # mask: 1 if not done, 0 if done
-                done = np.logical_or(term, trunc)  # (n_rollout_threads, 1)
+                done = np.logical_or(term, trunc)  # (n_rollout_thkeads, 1)
                 mask = np.logical_not(done)  # (n_rollout_threads, 1)
 
                 # bad_mask use 0 to denote truncation and 1 to denote termination or not done
                 bad_mask = np.logical_not(trunc)
 
                 # reset certain rnn hidden state
-                done_env = done.squeeze(1)
-                rnn_hidden_state[done_env == True] = np.zeros(
+                # done = done.squeeze(1)
+                rnn_hidden_state[done == True] = np.zeros(
                     (
-                        (done_env == True).sum(),
+                        (done == True).sum(),
                         self.n_rnn_layers,
                         self.rnn_hidden_dim,
                     )
                 )
 
                 data = (
-                    rules,
-                    player,
-                    other_players,
-                    units,
-                    cities,
-                    other_units,
-                    other_cities,
-                    civmap,
-                    other_players_mask,
-                    units_mask,
-                    cities_mask,
-                    other_units_mask,
-                    other_cities_mask,
+                    obs["rules"],
+                    obs["player"],
+                    obs["others_player"],
+                    obs["unit"],
+                    obs["city"],
+                    obs["others_unit"],
+                    obs["others_city"],
+                    obs["map"],
+                    obs["others_player_mask"],
+                    obs["unit_mask"],
+                    obs["city_mask"],
+                    obs["others_unit_mask"],
+                    obs["others_city_mask"],
                     rnn_hidden_state,
                     actor_type,
                     actor_type_log_prob,
-                    actor_type_mask,
+                    obs["actor_type_mask"],
                     city_id,
                     city_id_log_prob,
-                    city_id_mask,
+                    obs["city_id_mask"],
                     city_action_type,
                     city_action_type_log_prob,
-                    city_action_type_mask,
+                    obs["city_action_type_mask"],
                     unit_id,
                     unit_id_log_prob,
-                    unit_id_mask,
+                    obs["unit_id_mask"],
                     unit_action_type,
                     unit_action_type_log_prob,
-                    unit_action_type_mask,
+                    obs["unit_action_type_mask"],
                     gov_action_type,
                     gov_action_type_log_prob,
-                    gov_action_type_mask,
+                    obs["gov_action_type_mask"],
                     mask,
                     bad_mask,
                     reward,
@@ -252,6 +237,7 @@ class Runner:
                 self.buffer.insert(data)
 
                 self.logger.per_step(data)
+                print(f"Step {step}")
 
             self.compute()
             self.prep_training()
@@ -266,55 +252,35 @@ class Runner:
                 )
 
             # eval
-            if episode % self.algo_args["train"]["eval_interval"] == 0:
-                if self.algo_args["eval"]["use_eval"]:
-                    self.prep_rollout()
-                    self.eval()
-                self.save()
-
+            # if episode % self.algo_args["train"]["eval_interval"] == 0:
+            #     if self.algo_args["eval"]["use_eval"]:
+            #         self.prep_rollout()
+            #         self.eval()
+            #     self.save()
+            #
             self.after_update()
 
     def warmup(self):
-        (
-            rules,
-            player,
-            other_players,
-            units,
-            cities,
-            other_units,
-            other_cities,
-            civmap,
-            other_players_mask,
-            units_mask,
-            cities_mask,
-            other_units_mask,
-            other_cities_mask,
-            actor_type_mask,
-            city_id_mask,
-            city_action_type_mask,
-            unit_id_mask,
-            unit_action_type_mask,
-            gov_action_type_mask,
-        ) = self.envs.reset()
-        self.buffer.rules_input[0] = rules.copy()
-        self.buffer.player_input[0] = player.copy()
-        self.buffer.other_players_input[0] = other_players.copy()
-        self.buffer.units_input[0] = units.copy()
-        self.buffer.cities_input[0] = cities.copy()
-        self.buffer.other_units_input[0] = other_units.copy()
-        self.buffer.other_cities_input[0] = other_cities.copy()
-        self.buffer.civmap_input[0] = civmap.copy()
-        self.buffer.other_players_masks[0] = other_players_mask.copy()
-        self.buffer.units_masks[0] = units_mask.copy()
-        self.buffer.cities_masks[0] = cities_mask.copy()
-        self.buffer.other_units_masks[0] = other_units_mask.copy()
-        self.buffer.other_cities_masks[0] = other_cities_mask.copy()
-        self.buffer.actor_type_masks[0] = actor_type_mask.copy()
-        self.buffer.city_id_masks[0] = city_id_mask.copy()
-        self.buffer.city_action_type_masks[0] = city_action_type_mask.copy()
-        self.buffer.unit_id_masks[0] = unit_id_mask.copy()
-        self.buffer.unit_action_type_masks[0] = unit_action_type_mask.copy()
-        self.buffer.gov_action_type_masks[0] = gov_action_type_mask.copy()
+        obs, _ = self.envs.reset()
+        self.buffer.rules_input[0] = obs["rules"].copy()
+        self.buffer.player_input[0] = obs["player"].copy()
+        self.buffer.others_player_input[0] = obs["others_player"].copy()
+        self.buffer.unit_input[0] = obs["unit"].copy()
+        self.buffer.city_input[0] = obs["city"].copy()
+        self.buffer.others_unit_input[0] = obs["others_unit"].copy()
+        self.buffer.others_city_input[0] = obs["others_city"].copy()
+        self.buffer.map_input[0] = obs["map"].copy()
+        self.buffer.others_player_masks[0] = obs["others_player_mask"].copy()
+        self.buffer.unit_masks[0] = obs["unit_mask"].copy()
+        self.buffer.city_masks[0] = obs["city_mask"].copy()
+        self.buffer.others_unit_masks[0] = obs["others_unit_mask"].copy()
+        self.buffer.others_city_masks[0] = obs["others_city_mask"].copy()
+        self.buffer.actor_type_masks[0] = obs["actor_type_mask"].copy()
+        self.buffer.city_id_masks[0] = obs["city_id_mask"].copy()
+        self.buffer.city_action_type_masks[0] = obs["city_action_type_mask"].copy()
+        self.buffer.unit_id_masks[0] = obs["unit_id_mask"].copy()
+        self.buffer.unit_action_type_masks[0] = obs["unit_action_type_mask"].copy()
+        self.buffer.gov_action_type_masks[0] = obs["gov_action_type_mask"].copy()
 
     @torch.no_grad()
     def compute(self):
@@ -336,17 +302,17 @@ class Runner:
         ) = self.algo.agent(
             self.buffer.rules_input[-1],
             self.buffer.player_input[-1],
-            self.buffer.other_players_input[-1],
-            self.buffer.units_input[-1],
-            self.buffer.cities_input[-1],
-            self.buffer.other_units_input[-1],
-            self.buffer.other_cities_input[-1],
-            self.buffer.civmap_input[-1],
-            self.buffer.other_players_masks[-1],
-            self.buffer.units_masks[-1],
-            self.buffer.cities_masks[-1],
-            self.buffer.other_units_masks[-1],
-            self.buffer.other_cities_masks[-1],
+            self.buffer.others_player_input[-1],
+            self.buffer.unit_input[-1],
+            self.buffer.city_input[-1],
+            self.buffer.others_unit_input[-1],
+            self.buffer.others_city_input[-1],
+            self.buffer.map_input[-1],
+            self.buffer.others_player_masks[-1],
+            self.buffer.unit_masks[-1],
+            self.buffer.city_masks[-1],
+            self.buffer.others_unit_masks[-1],
+            self.buffer.others_city_masks[-1],
             self.buffer.actor_type_masks[-1],
             self.buffer.city_id_masks[-1],
             self.buffer.city_action_type_masks[-1],
@@ -370,33 +336,33 @@ class Runner:
         train_info = self.algo.train(self.buffer, advantages, self.value_normalizer)
         return train_info
 
-    @torch.no_grad()
-    def eval(self):
-        """Evaluate the model."""
-        self.logger.eval_init()  # logger callback at the beginning of evaluation
-        eval_episode = 0
-
-        (
-            rules,
-            player,
-            other_players,
-            units,
-            cities,
-            other_units,
-            other_cities,
-            civmap,
-            other_players_mask,
-            units_mask,
-            cities_mask,
-            other_units_mask,
-            other_cities_mask,
-            actor_type_mask,
-            city_id_mask,
-            city_action_type_mask,
-            unit_id_mask,
-            unit_action_type_mask,
-            gov_action_type_mask,
-        ) = self.eval_envs.reset()
+        # @torch.no_grad()
+        # def eval(self):
+        #     """Evaluate the model."""
+        #     self.logger.eval_init()  # logger callback at the beginning of evaluation
+        #     eval_episode = 0
+        #
+        #     (
+        #         rules,
+        #         player,
+        #         others_player,
+        #         unit,
+        #         city,
+        #         others_unit,
+        #         others_city,
+        #         map,
+        #         others_player_mask,
+        #         unit_mask,
+        #         city_mask,
+        #         others_unit_mask,
+        #         others_city_mask,
+        #         actor_type_mask,
+        #         city_id_mask,
+        #         city_action_type_mask,
+        #         unit_id_mask,
+        #         unit_action_type_mask,
+        #         gov_action_type_mask,
+        #     ) = self.eval_envs.reset()
 
         eval_rnn_hidden_state = np.zeros(
             (
@@ -430,17 +396,17 @@ class Runner:
             ) = self.algo.agent(
                 rules,
                 player,
-                other_players,
-                units,
-                cities,
-                other_units,
-                other_cities,
-                civmap,
-                other_players_mask,
-                units_mask,
-                cities_mask,
-                other_units_mask,
-                other_cities_mask,
+                others_player,
+                unit,
+                city,
+                others_unit,
+                others_city,
+                map,
+                others_player_mask,
+                unit_mask,
+                city_mask,
+                others_unit_mask,
+                others_city_mask,
                 actor_type_mask,
                 city_id_mask,
                 city_action_type_mask,
@@ -470,17 +436,17 @@ class Runner:
             (
                 rules,
                 player,
-                other_players,
-                units,
-                cities,
-                other_units,
-                other_cities,
-                civmap,
-                other_players_mask,
-                units_mask,
-                cities_mask,
-                other_units_mask,
-                other_cities_mask,
+                others_player,
+                unit,
+                city,
+                others_unit,
+                others_city,
+                map,
+                others_player_mask,
+                unit_mask,
+                city_mask,
+                others_unit_mask,
+                others_city_mask,
                 actor_type_mask,
                 city_id_mask,
                 city_action_type_mask,
@@ -519,17 +485,17 @@ class Runner:
             eval_data = (
                 rules,
                 player,
-                other_players,
-                units,
-                cities,
-                other_units,
-                other_cities,
-                civmap,
-                other_players_mask,
-                units_mask,
-                cities_mask,
-                other_units_mask,
-                other_cities_mask,
+                others_player,
+                unit,
+                city,
+                others_unit,
+                others_city,
+                map,
+                others_player_mask,
+                unit_mask,
+                city_mask,
+                others_unit_mask,
+                others_city_mask,
                 eval_rnn_hidden_state,
                 actor_type,
                 actor_type_log_prob,
