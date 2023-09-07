@@ -28,7 +28,7 @@ def set_seed(args):
     torch.cuda.manual_seed_all(args["seed"])
 
 
-def make_train_env(env, seed, n_threads, env_args)->gymnasium.Env:
+def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
     """Make env for training."""
     print(f"making environments with {n_threads} and env_args: {env_args}")
     env_args = env_args if env_args else {}
@@ -39,14 +39,14 @@ def make_train_env(env, seed, n_threads, env_args)->gymnasium.Env:
     def get_env_fn(rank):
         # TODO: put this somewhere better
         def init_env():
-            env = FreecivTensorEnv(random.choice(DEV_PORT_LIST),**env_args)
+            env = FreecivTensorEnv(random.choice(DEV_PORT_LIST), **env_args)
             env.seed(seed + rank * 1000)
             return env
 
         return init_env
 
     if n_threads == 1:
-        print(f'got {n_threads} thread')
+        print(f"got {n_threads} thread")
         return DummyVecEnv(get_env_fn(0))
     else:
         return ShareSubprocVecEnv([get_env_fn(i) for i in range(n_threads)])
