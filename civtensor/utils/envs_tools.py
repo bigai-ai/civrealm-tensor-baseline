@@ -34,6 +34,7 @@ def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
     env_args = env_args if env_args else {}
     # TODO: distribute ports to ranks
     from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
+    time.sleep(3)
 
     # TODO: Currently env_args are not useful
     def get_env_fn(rank):
