@@ -324,6 +324,15 @@ class DummyVecEnv(Wrapper):
         return batchdict(observation), info
 
     def step(self, action):
+        # TODO: delete this after debug 
+        # -----------------------------
+        log_action = self.env.action(action)
+        if log_action != None:
+            print(f"action taken: {log_action}")
+            print(f"action available ? {self.action_list[log_action[0]][log_action[1]][log_action[2]]}")
+        else:
+            print("action taken: end term")
+        # -----------------------------
         obs, reward, terminated, truncated, info = self.env.step(
             debatchdict(action)
         )
