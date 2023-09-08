@@ -503,7 +503,7 @@ class Buffer:
             rnn_hidden_states_batch = self.rnn_hidden_states[0:1, ids]
             old_value_preds_batch = _flatten(T, N, self.value_preds[:-1, ids])
             return_batch = _flatten(T, N, self.returns[:-1, ids])
-            adv_targ = _flatten(T, N, advantages[:-1, ids])
+            adv_targ = _flatten(T, N, advantages[:, ids])
             actor_type_batch = _flatten(T, N, self.actor_type_output[:, ids])
             old_actor_type_log_probs_batch = _flatten(
                 T, N, self.actor_type_log_probs[:, ids]
