@@ -296,8 +296,8 @@ class Agent(nn.Module):
             ],
             dim=1,
         )  # (batch_size, 8, hidden_dim)
-        
-        src_mask = torch.all(torch.isnan(global_encoding),dim=-1)
+
+        src_mask = torch.all(torch.isnan(global_encoding), dim=-1)
         global_encoding[src_mask] = 0
 
         global_encoding_processed = self.global_transformer(
@@ -582,7 +582,10 @@ class Agent(nn.Module):
         city_action_type_dist_entropy = city_action_type_distribution.entropy().mean()
 
         # unit id head
-        unit_id_log_probs_batch, unit_chosen_encoded = self.unit_id_head(
+        (
+            unit_id_log_probs_batch,
+            unit_chosen_encoded,
+        ) = self.unit_id_head.evaluate_actions(
             rnn_out, unit_encoded, unit_id_masks_batch, unit_id_batch
         )  # (batch_size, 1), (batch_size, hidden_dim)
 

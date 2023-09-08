@@ -12,7 +12,9 @@ from civtensor.utils.envs_tools import check
 
 
 class PPO:
-    def __init__(self, args, observation_spaces, action_spaces, device=torch.device("cpu")):
+    def __init__(
+        self, args, observation_spaces, action_spaces, device=torch.device("cpu")
+    ):
         self.args = args
         self.device = device
 
@@ -278,7 +280,7 @@ class PPO:
             + (actor_type_batch == 2)
             * (actor_type_dist_entropy + gov_action_type_dist_entropy)
             + (actor_type_batch == 3) * (actor_type_dist_entropy)
-        )
+        ).mean()
 
         ratio = torch.exp(action_log_probs_batch - old_action_log_probs_batch)
         surr1 = ratio * adv_targ

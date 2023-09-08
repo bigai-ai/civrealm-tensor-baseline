@@ -116,15 +116,15 @@ class Buffer:
                 self.n_max_others_player,
                 1,
             ),
-            dtype=np.int32,
+            dtype=np.int64,
         )
         self.unit_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, self.n_max_unit, 1),
-            dtype=np.int32,
+            dtype=np.int64,
         )
         self.city_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, self.n_max_city, 1),
-            dtype=np.int32,
+            dtype=np.int64,
         )
         self.others_unit_masks = np.ones(
             (
@@ -133,7 +133,7 @@ class Buffer:
                 self.n_max_others_unit,
                 1,
             ),
-            dtype=np.int32,
+            dtype=np.int64,
         )
         self.others_city_masks = np.ones(
             (
@@ -142,7 +142,7 @@ class Buffer:
                 self.n_max_others_city,
                 1,
             ),
-            dtype=np.int32,
+            dtype=np.int64,
         )
 
         self.rnn_hidden_states = np.zeros(
@@ -174,23 +174,23 @@ class Buffer:
         )
         self.actor_type_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, self.actor_type_dim),
-            dtype=np.int32,
+            dtype=np.int64,
         )
 
         self.city_id_output = np.zeros(
-            (self.episode_length, self.n_rollout_threads, 1), dtype=np.int32
+            (self.episode_length, self.n_rollout_threads, 1), dtype=np.int64
         )
         self.city_id_log_probs = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.city_id_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, self.n_max_city, 1),
-            dtype=np.int32,
+            dtype=np.int64,
         )
 
         self.city_action_type_output = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1),
-            dtype=np.int32,
+            dtype=np.int64,
         )  # TODO: check data type
         self.city_action_type_log_probs = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
@@ -202,23 +202,23 @@ class Buffer:
                 self.n_max_city,
                 self.city_action_type_dim,
             ),
-            dtype=np.int32,
+            dtype=np.int64,
         )
 
         self.unit_id_output = np.zeros(
-            (self.episode_length, self.n_rollout_threads, 1), dtype=np.int32
+            (self.episode_length, self.n_rollout_threads, 1), dtype=np.int64
         )
         self.unit_id_log_probs = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.unit_id_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, self.n_max_unit, 1),
-            dtype=np.int32,
+            dtype=np.int64,
         )
 
         self.unit_action_type_output = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1),
-            dtype=np.int32,
+            dtype=np.int64,
         )
         self.unit_action_type_log_probs = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
@@ -230,26 +230,26 @@ class Buffer:
                 self.n_max_unit,
                 self.unit_action_type_dim,
             ),
-            dtype=np.int32,
+            dtype=np.int64,
         )
 
         self.gov_action_type_output = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1),
-            dtype=np.int32,
+            dtype=np.int64,
         )
         self.gov_action_type_log_probs = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.gov_action_type_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, self.gov_action_type_dim),
-            dtype=np.int32,
+            dtype=np.int64,
         )
 
         self.masks = np.ones(
-            (self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.int32
+            (self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.int64
         )
         self.bad_masks = np.ones(
-            (self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.int32
+            (self.episode_length + 1, self.n_rollout_threads, 1), dtype=np.int64
         )
 
         self.step = 0
