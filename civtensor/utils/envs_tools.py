@@ -34,13 +34,14 @@ def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
     env_args = env_args if env_args else {}
     # TODO: distribute ports to ranks
     from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
+
     time.sleep(3)
 
     # TODO: Currently env_args are not useful
     def get_env_fn(rank):
         # TODO: put this somewhere better
         def init_env():
-            env = FreecivTensorEnv(random.choice(DEV_PORT_LIST), **env_args)
+            env = FreecivTensorEnv(client_port=random.choice(DEV_PORT_LIST))
             env.seed(seed + rank * 1000)
             return env
 
