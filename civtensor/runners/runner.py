@@ -167,7 +167,7 @@ class Runner:
                 value_pred = _t2n(value_pred)
                 rnn_hidden_state = _t2n(rnn_hidden_state)
 
-                obs, reward, term, trunc, info  = self.envs.step(
+                obs, reward, term, trunc, info = self.envs.step(
                     {
                         "actor_type": actor_type,
                         "city_id": city_id,
@@ -323,6 +323,7 @@ class Runner:
             self.buffer.masks[-1],
             deterministic=False,
         )
+        value_pred = _t2n(value_pred)
         self.buffer.compute_returns(value_pred, self.value_normalizer)
 
     def after_update(self):
