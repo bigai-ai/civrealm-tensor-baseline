@@ -30,7 +30,9 @@ class Buffer:
         ]  # or Sequence?
         self.unit_dim = self.observation_spaces["unit"].shape[1]  # or Sequence?
         self.city_dim = self.observation_spaces["city"].shape[1]  # or Sequence?
-        self.others_unit_dim = self.observation_spaces["others_unit"].shape[1]  # or Sequence?
+        self.others_unit_dim = self.observation_spaces["others_unit"].shape[
+            1
+        ]  # or Sequence?
         self.others_city_dim = self.observation_spaces["others_city"].shape[
             1
         ]  # or Sequence?
@@ -171,7 +173,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.actor_type_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.actor_type_dim),
+            (self.episode_length + 1, self.n_rollout_threads, self.actor_type_dim),
             dtype=np.int32,
         )
 
@@ -182,7 +184,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.city_id_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.n_max_city, 1),
+            (self.episode_length + 1, self.n_rollout_threads, self.n_max_city, 1),
             dtype=np.int32,
         )
 
@@ -194,7 +196,12 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.city_action_type_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.n_max_city, self.city_action_type_dim),
+            (
+                self.episode_length + 1,
+                self.n_rollout_threads,
+                self.n_max_city,
+                self.city_action_type_dim,
+            ),
             dtype=np.int32,
         )
 
@@ -205,7 +212,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.unit_id_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.n_max_unit, 1),
+            (self.episode_length + 1, self.n_rollout_threads, self.n_max_unit, 1),
             dtype=np.int32,
         )
 
@@ -217,7 +224,12 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.unit_action_type_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.n_max_unit, self.unit_action_type_dim),
+            (
+                self.episode_length + 1,
+                self.n_rollout_threads,
+                self.n_max_unit,
+                self.unit_action_type_dim,
+            ),
             dtype=np.int32,
         )
 
@@ -229,7 +241,7 @@ class Buffer:
             (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
         )
         self.gov_action_type_masks = np.ones(
-            (self.episode_length, self.n_rollout_threads, self.gov_action_type_dim),
+            (self.episode_length + 1, self.n_rollout_threads, self.gov_action_type_dim),
             dtype=np.int32,
         )
 
