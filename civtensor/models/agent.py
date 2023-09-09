@@ -173,6 +173,8 @@ class Agent(nn.Module):
             self.gain,
         )
 
+        self.eps = torch.tensor(1e-8).to(self.device)
+
     def encoding_step(
         self,
         rules,
@@ -263,25 +265,25 @@ class Agent(nn.Module):
         # global transformer step
         others_player_global_encoding = torch.sum(
             others_player_encoded * others_player_mask, dim=1
-        ) / torch.sum(
+        ) / (torch.sum(
             others_player_mask, dim=1
-        )  # (batch_size, hidden_dim)
+        ) + self.eps)  # (batch_size, hidden_dim)
 
-        unit_global_encoding = torch.sum(unit_encoded * unit_mask, dim=1) / torch.sum(
+        unit_global_encoding = torch.sum(unit_encoded * unit_mask, dim=1) / (torch.sum(
             unit_mask, dim=1
-        )  # (batch_size, hidden_dim)
+        ) + self.eps)  # (batch_size, hidden_dim)
 
-        city_global_encoding = torch.sum(city_encoded * city_mask, dim=1) / torch.sum(
+        city_global_encoding = torch.sum(city_encoded * city_mask, dim=1) / (torch.sum(
             city_mask, dim=1
-        )
+        ) + self.eps)
 
         others_unit_global_encoding = torch.sum(
             others_unit_encoded * others_unit_mask, dim=1
-        ) / torch.sum(others_unit_mask, dim=1)
+        ) / (torch.sum(others_unit_mask, dim=1) + self.eps)
 
         others_city_global_encoding = torch.sum(
             others_city_encoded * others_city_mask, dim=1
-        ) / torch.sum(others_city_mask, dim=1)
+        ) / (torch.sum(others_city_mask, dim=1) + self.eps)
 
         global_encoding = torch.stack(
             [
@@ -297,11 +299,8 @@ class Agent(nn.Module):
             dim=1,
         )  # (batch_size, 8, hidden_dim)
 
-        src_mask = torch.all(torch.isnan(global_encoding), dim=-1)
-        global_encoding[src_mask] = 0
-
         global_encoding_processed = self.global_transformer(
-            global_encoding, src_mask=src_mask
+            global_encoding, src_mask=None
         )  # (batch_size, 8, hidden_dim)
 
         return global_encoding_processed, unit_encoded, city_encoded
