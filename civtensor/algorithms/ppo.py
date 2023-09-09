@@ -30,7 +30,6 @@ class PPO:
         self.use_huber_loss = args["use_huber_loss"]
         self.huber_delta = args["huber_delta"]
 
-        self.critic_lr = args["critic_lr"]
         self.opti_eps = args["opti_eps"]
         self.weight_decay = args["weight_decay"]
 
