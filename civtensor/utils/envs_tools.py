@@ -6,8 +6,12 @@ import gymnasium
 import numpy as np
 import torch
 
-from civtensor.envs.env_wrappers import ShareSubprocVecEnv, DummyVecEnv
 from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import FreecivTensorEnv
+from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
+from freeciv_gym.freeciv.utils.port_list import EVAL_PORT_LIST
+
+# from civtensor.envs.env_wrappers import ShareSubprocVecEnv, DummyVecEnv
+# from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import FreecivTensorEnv
 
 
 def check(value):
@@ -28,42 +32,47 @@ def set_seed(args):
     torch.cuda.manual_seed_all(args["seed"])
 
 
-def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
-    """Make env for training."""
-    print(f"making environments with {n_threads} and env_args: {env_args}")
-    env_args = env_args if env_args else {}
-    # TODO: distribute ports to ranks
-    from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
-
-    # TODO: Currently env_args are not useful
-    def get_env_fn(rank):
-        # TODO: put this somewhere better
-        def init_env():
-            env = FreecivTensorEnv(client_port=random.choice(DEV_PORT_LIST))
-            env.seed(seed + rank * 1000)
-            return env
-
-        return init_env
-
-    if n_threads == 1:
-        print(f"got {n_threads} thread")
-        return DummyVecEnv(get_env_fn(0))
-    else:
-        return ShareSubprocVecEnv([get_env_fn(i) for i in range(n_threads)])
+def make_train_env(env, seed, n_threads):
+    return FreecivTensorEnv(n_threads, DEV_PORT_LIST[0])
 
 
-def make_eval_env(env_name, seed, n_threads, env_args):
-    """Make env for evaluation."""
+# def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
+#     """Make env for training."""
 
-    def get_env_fn(rank):
-        def init_env():
-            env = FreecivTensorEnv(env_args)
-            env.seed(seed * 50000 + rank * 10000)
-            return env
+#     print(f"making environments with {n_threads} and env_args: {env_args}")
+#     env_args = env_args if env_args else {}
+#     # TODO: distribute ports to ranks
+#     from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
 
-        return init_env
+#     # TODO: Currently env_args are not useful
+#     def get_env_fn(rank):
+#         # TODO: put this somewhere better
+#         def init_env():
+#             env = FreecivTensorEnv(client_port=random.choice(DEV_PORT_LIST))
+#             env.seed(seed + rank * 1000)
+#             return env
 
-    if n_threads == 1:
-        return ShareDummyVecEnv([get_env_fn(0)])
-    else:
-        return ShareSubprocVecEnv([get_env_fn(i) for i in range(n_threads)])
+#         return init_env
+
+#     if n_threads == 1:
+#         print(f"got {n_threads} thread")
+#         return DummyVecEnv(get_env_fn(0))
+#     else:
+#         return ShareSubprocVecEnv([get_env_fn(i) for i in range(n_threads)])
+
+
+# def make_eval_env(env_name, seed, n_threads, env_args):
+#     """Make env for evaluation."""
+
+#     def get_env_fn(rank):
+#         def init_env():
+#             env = FreecivTensorEnv(env_args)
+#             env.seed(seed * 50000 + rank * 10000)
+#             return env
+
+#         return init_env
+
+#     if n_threads == 1:
+#         return ShareDummyVecEnv([get_env_fn(0)])
+#     else:
+#         return ShareSubprocVecEnv([get_env_fn(i) for i in range(n_threads)])

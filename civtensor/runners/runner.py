@@ -7,7 +7,7 @@ from civtensor.algorithms.ppo import PPO
 from civtensor.common.buffer import Buffer
 from civtensor.common.valuenorm import ValueNorm
 from civtensor.envs.freeciv_tensor_env.freeciv_tensor_logger import FreecivTensorLogger
-from civtensor.utils.envs_tools import set_seed, make_train_env, make_eval_env
+from civtensor.utils.envs_tools import set_seed, make_train_env
 from civtensor.utils.models_tools import init_device
 from civtensor.utils.configs_tools import init_dir, save_config
 from civtensor.utils.trans_tools import _t2n
@@ -43,7 +43,6 @@ class Runner:
             args["env"],
             algo_args["seed"]["seed"],
             algo_args["train"]["n_rollout_threads"],
-            env_args["env_args"],
         )
         # self.eval_envs = (
         #     make_eval_env(
