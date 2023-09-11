@@ -166,15 +166,13 @@ class Runner:
                 value_pred = _t2n(value_pred)
                 rnn_hidden_state = _t2n(rnn_hidden_state)
 
-                obs, reward, term, trunc, info = self.envs.step(
-                    {
-                        "actor_type": actor_type,
-                        "city_id": city_id,
-                        "city_action_type": city_action_type,
-                        "unit_id": unit_id,
-                        "unit_action_type": unit_action_type,
-                        "gov_action_type": gov_action_type,
-                    }
+                obs, reward, term, trunc = self.envs.step(
+                    actor_type,
+                    city_id,
+                    city_action_type,
+                    unit_id,
+                    unit_action_type,
+                    gov_action_type,
                 )  # no info at the moment
 
                 # mask: 1 if not done, 0 if done
@@ -260,7 +258,7 @@ class Runner:
             self.after_update()
 
     def warmup(self):
-        obs, _ = self.envs.reset()
+        obs = self.envs.reset()
         self.buffer.rules_input[0] = obs["rules"].copy()
         self.buffer.player_input[0] = obs["player"].copy()
         self.buffer.others_player_input[0] = obs["others_player"].copy()

@@ -19,22 +19,22 @@ class FreecivTensorEnv:
         self.action_spaces = self.tensor_env.action_spaces
 
     def reset(self):
-        obs, _ = self.tensor_env.reset()
-        return_list = []
+        obs_ori, _ = self.tensor_env.reset()
+        obs = {}
         for key in [
             "rules",
+            "map",
             "player",
-            "other_players",
-            "units",
-            "cities",
-            "other_units",
-            "other_cities",
-            "civmap",
-            "other_players_mask",
-            "units_mask",
-            "cities_mask",
-            "other_units_mask",
-            "other_cities_mask",
+            "city",
+            "unit",
+            "others_player",
+            "others_unit",
+            "others_city",
+            "unit_mask",
+            "city_mask",
+            "others_unit_mask",
+            "others_city_mask",
+            "others_player_mask",
             "actor_type_mask",
             "city_id_mask",
             "city_action_type_mask",
@@ -42,8 +42,8 @@ class FreecivTensorEnv:
             "unit_action_type_mask",
             "gov_action_type_mask",
         ]:
-            return_list.append(np.stack([obs_single[key] for obs_single in obs]))
-        return return_list
+            obs[key] = np.stack([obs_single[key] for obs_single in obs_ori])
+        return obs
 
     def step(
         self,
@@ -54,30 +54,32 @@ class FreecivTensorEnv:
         unit_action_type,
         gov_action_type,
     ):
-        actions = zip(
-            list(actor_type),
-            list(city_id),
-            list(city_action_type),
-            list(unit_id),
-            list(unit_action_type),
-            list(gov_action_type),
+        actions = list(
+            zip(
+                list(actor_type),
+                list(city_id),
+                list(city_action_type),
+                list(unit_id),
+                list(unit_action_type),
+                list(gov_action_type),
+            )
         )
-        obs, rew, term, trun, _ = self.tensor_env.step(actions)
-        return_list = []
+        obs_ori, rew_ori, term_ori, trun_ori, _ = self.tensor_env.step(actions)
+        obs = {}
         for key in [
             "rules",
+            "map",
             "player",
-            "other_players",
-            "units",
-            "cities",
-            "other_units",
-            "other_cities",
-            "civmap",
-            "other_players_mask",
-            "units_mask",
-            "cities_mask",
-            "other_units_mask",
-            "other_cities_mask",
+            "city",
+            "unit",
+            "others_player",
+            "others_unit",
+            "others_city",
+            "unit_mask",
+            "city_mask",
+            "others_unit_mask",
+            "others_city_mask",
+            "others_player_mask",
             "actor_type_mask",
             "city_id_mask",
             "city_action_type_mask",
@@ -85,8 +87,8 @@ class FreecivTensorEnv:
             "unit_action_type_mask",
             "gov_action_type_mask",
         ]:
-            return_list.append(np.stack(obs_single[key] for obs_single in obs))
-        return_list.append(np.stack(rew))
-        return_list.append(np.stack(term))
-        return_list.append(np.stack(trun))
-        return return_list
+            obs[key] = np.stack([obs_single[key] for obs_single in obs_ori])
+        rew = np.stack(rew_ori)
+        term = np.stack(term_ori)
+        trun = np.stack(trun_ori)
+        return obs, rew, term, trun
