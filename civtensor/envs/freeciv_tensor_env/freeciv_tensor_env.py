@@ -42,7 +42,7 @@ class FreecivTensorEnv:
             "unit_action_type_mask",
             "gov_action_type_mask",
         ]:
-            return_list.append(np.stack(obs_single[key] for obs_single in obs))
+            return_list.append(np.stack([obs_single[key] for obs_single in obs]))
         return return_list
 
     def step(
