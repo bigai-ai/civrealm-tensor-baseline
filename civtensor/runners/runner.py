@@ -167,12 +167,14 @@ class Runner:
                 rnn_hidden_state = _t2n(rnn_hidden_state)
 
                 obs, reward, term, trunc = self.envs.step(
-                    actor_type,
-                    city_id,
-                    city_action_type,
-                    unit_id,
-                    unit_action_type,
-                    gov_action_type,
+                    {
+                        "actor_type": actor_type,
+                        "city_id": city_id,
+                        "city_action_type": city_action_type,
+                        "unit_id": unit_id,
+                        "unit_action_type": unit_action_type,
+                        "gov_action_type": gov_action_type,
+                    }
                 )  # no info at the moment
 
                 # mask: 1 if not done, 0 if done
@@ -183,7 +185,7 @@ class Runner:
                 bad_mask = np.logical_not(trunc)
 
                 # reset certain rnn hidden state
-                # done = done.squeeze(1)
+                done = done.squeeze(1)
                 rnn_hidden_state[done == True] = np.zeros(
                     (
                         (done == True).sum(),

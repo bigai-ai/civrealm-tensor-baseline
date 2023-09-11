@@ -45,26 +45,20 @@ class FreecivTensorEnv:
             obs[key] = np.stack([obs_single[key] for obs_single in obs_ori])
         return obs
 
-    def step(
-        self,
-        actor_type,
-        city_id,
-        city_action_type,
-        unit_id,
-        unit_action_type,
-        gov_action_type,
-    ):
-        actions = list(
-            zip(
-                list(actor_type),
-                list(city_id),
-                list(city_action_type),
-                list(unit_id),
-                list(unit_action_type),
-                list(gov_action_type),
-            )
-        )
-        obs_ori, rew_ori, term_ori, trun_ori, _ = self.tensor_env.step(actions)
+    def step(self, actions_ori):
+        keys = [
+            "actor_type",
+            "city_id",
+            "city_action_type",
+            "unit_id",
+            "unit_action_type",
+            "gov_action_type",
+        ]
+        batch_size = actions_ori["actor_type"].shape[0]
+        actions = []
+        for i in range(batch_size):
+            actions.append({key: actions_ori[key][i] for key in keys})
+        obs_ori, rew_ori, term_ori, trunc_ori, _ = self.tensor_env.step(actions)
         obs = {}
         for key in [
             "rules",
@@ -90,5 +84,10 @@ class FreecivTensorEnv:
             obs[key] = np.stack([obs_single[key] for obs_single in obs_ori])
         rew = np.stack(rew_ori)
         term = np.stack(term_ori)
-        trun = np.stack(trun_ori)
-        return obs, rew, term, trun
+        trunc = np.stack(trunc_ori)
+        return (
+            obs,
+            np.expand_dims(rew, -1),
+            np.expand_dims(term, -1),
+            np.expand_dims(trunc, -1),
+        )
