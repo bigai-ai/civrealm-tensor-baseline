@@ -75,3 +75,7 @@ action_spaces = {
     gov_action_type,  # (n_parallel_envs, 1)
 )
 ```
+
+### Tensor Env
+
+observation space keys = ['rules', 'map', 'player', 'city', 'unit', 'others_player', 'others_unit', 'others_city', 'unit_mask', 'city_mask', 'others_unit_mask', 'others_city_mask', 'others_player_mask', 'actor_type_mask', 'city_id_mask', 'city_action_type_mask', 'unit_id_mask', 'unit_action_type_mask', 'gov_action_type_mask']
