@@ -19,9 +19,9 @@ train:
   # number of steps per environment per training data collection
   episode_length: 200
   # logging interval
-  log_interval: 5
+  log_interval: 2
   # evaluation interval
-  eval_interval: 25
+  eval_interval: 5
   # whether to use ValueNorm
   use_valuenorm: True
   # whether to use linear learning rate decay
@@ -71,8 +71,6 @@ algo:
   # ppo parameters
   # number of epochs for actor update
   ppo_epoch: 5
-  # number of epochs for critic update
-  critic_epoch: 5
   # whether to use clipped value loss
   use_clipped_value_loss: True
   # clip parameter
@@ -80,10 +78,6 @@ algo:
   # TODO: added because PPO requests this rather the latter two
   # number of mini-batches per epoch
   num_mini_batch: 1
-  # number of mini-batches per epoch for actor update
-  actor_num_mini_batch: 1
-  # number of mini-batches per epoch for critic update
-  critic_num_mini_batch: 1
   # coefficient for entropy term in actor loss
   entropy_coef: 0.01
   # coefficient for value loss

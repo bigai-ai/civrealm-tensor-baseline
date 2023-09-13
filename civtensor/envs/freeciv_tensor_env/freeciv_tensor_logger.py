@@ -116,6 +116,12 @@ class FreecivTensorLogger:
                 {"aver_rewards": aver_episode_rewards},
                 self.total_num_steps,
             )
+            #### TEMPORARY!!! ####
+            self.log_file.write(
+                ",".join(map(str, [self.total_num_steps, aver_episode_rewards])) + "\n"
+            )
+            self.log_file.flush()
+            ######################
             self.done_episodes_rewards = []
 
     def eval_init(self):

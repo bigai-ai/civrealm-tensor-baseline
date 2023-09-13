@@ -250,6 +250,10 @@ class Runner:
                     self.buffer,
                 )
 
+                #### TEMPORARY ####
+                self.save()
+                ###################
+
             # eval
             # if episode % self.algo_args["train"]["eval_interval"] == 0:
             #     if self.algo_args["eval"]["use_eval"]:
