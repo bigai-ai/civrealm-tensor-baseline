@@ -79,3 +79,38 @@ action_spaces = {
 ### Tensor Env
 
 observation space keys = ['rules', 'map', 'player', 'city', 'unit', 'others_player', 'others_unit', 'others_city', 'unit_mask', 'city_mask', 'others_unit_mask', 'others_city_mask', 'others_player_mask', 'actor_type_mask', 'city_id_mask', 'city_action_type_mask', 'unit_id_mask', 'unit_action_type_mask', 'gov_action_type_mask']
+
+
+
+
+
+# Usage
+
+```
+git clone ssh://git@gitlab.mybigai.ac.cn:2222/civilization/freeciv-tensor-baseline.git
+cd freeciv-tensor-baseline
+pip install -e .
+```
+
+Remember to set `max_turns` to `100` in freeciv-gym.
+
+Customize `ppo.yaml`.
+
+```
+cd examples
+./train.sh
+```
+
+
+
+
+
+# Notes
+
+- On 3090Ti GPU, I think `n_rollout_threads: 5` and `episode_length: 200` will reach the maximum of its CUDA memory.
+
+
+
+# Acknowledgement
+
+This tensor baseline is developed based on https://github.com/PKU-MARL/HARL, please feel free to give it a star!
