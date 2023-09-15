@@ -13,7 +13,7 @@ device:
   torch_threads: 4
 train:
   # number of parallel environments for training data collection
-  n_rollout_threads: 5
+  n_rollout_threads: 2
   # number of total training steps
   num_env_steps: 10000000
   # number of steps per environment per training data collection

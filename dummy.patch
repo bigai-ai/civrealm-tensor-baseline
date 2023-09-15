@@ -1,0 +1,154 @@
+diff --git a/civtensor/configs/algos_cfgs/ppo.yaml b/civtensor/configs/algos_cfgs/ppo.yaml
+index 3803c2b..9ba47f2 100644
+--- a/civtensor/configs/algos_cfgs/ppo.yaml
++++ b/civtensor/configs/algos_cfgs/ppo.yaml
+@@ -13,7 +13,7 @@ device:
+   torch_threads: 4
+ train:
+   # number of parallel environments for training data collection
+-  n_rollout_threads: 5
++  n_rollout_threads: 1
+   # number of total training steps
+   num_env_steps: 10000000
+   # number of steps per environment per training data collection
+diff --git a/civtensor/envs/env_wrappers.py b/civtensor/envs/env_wrappers.py
+index e2ebd09..79ea6f9 100644
+--- a/civtensor/envs/env_wrappers.py
++++ b/civtensor/envs/env_wrappers.py
+@@ -4,7 +4,7 @@ Modified from OpenAI Baselines code to work with multi-agent envs
+ import numpy as np
+ import torch
+ from multiprocessing import Process, Pipe
+-from abc import ABC, abstractmethod
++from abc import ABC, abstractmethod 
+ import copy
+ 
+ from gymnasium import Wrapper
+@@ -304,8 +304,6 @@ class DummyVecEnv(Wrapper):
+     def __init__(self, env_fns):
+         super().__init__(env_fns())
+         print("Initializing DummyVecEnv")
+-        self._cached_reset_result = self.env.reset()
+-        self.first_reset = True
+         print("Complete Initializing DummyVecEnv")
+ 
+     @property
+@@ -317,9 +315,6 @@ class DummyVecEnv(Wrapper):
+         return self.action_space
+ 
+     def reset(self):
+-        if self.first_reset:
+-            obs, info = self._cached_reset_result
+-            return obs, info
+         observation, info = self.env.reset()
+         return batchdict(observation), info
+ 
+diff --git a/civtensor/runners/runner.py b/civtensor/runners/runner.py
+index 84e5f23..cdb9e4f 100644
+--- a/civtensor/runners/runner.py
++++ b/civtensor/runners/runner.py
+@@ -43,6 +43,7 @@ class Runner:
+             args["env"],
+             algo_args["seed"]["seed"],
+             algo_args["train"]["n_rollout_threads"],
++            None
+         )
+         # self.eval_envs = (
+         #     make_eval_env(
+@@ -166,7 +167,7 @@ class Runner:
+                 value_pred = _t2n(value_pred)
+                 rnn_hidden_state = _t2n(rnn_hidden_state)
+ 
+-                obs, reward, term, trunc = self.envs.step(
++                obs, reward, term, trunc, _ = self.envs.step(
+                     {
+                         "actor_type": actor_type,
+                         "city_id": city_id,
+@@ -185,7 +186,7 @@ class Runner:
+                 bad_mask = np.logical_not(trunc)
+ 
+                 # reset certain rnn hidden state
+-                done = done.squeeze(1)
++                # done = done.squeeze(1)
+                 rnn_hidden_state[done == True] = np.zeros(
+                     (
+                         (done == True).sum(),
+@@ -264,7 +265,7 @@ class Runner:
+             self.after_update()
+ 
+     def warmup(self):
+-        obs = self.envs.reset()
++        obs, _ = self.envs.reset()
+         self.buffer.rules_input[0] = obs["rules"].copy()
+         self.buffer.player_input[0] = obs["player"].copy()
+         self.buffer.others_player_input[0] = obs["others_player"].copy()
+diff --git a/civtensor/utils/envs_tools.py b/civtensor/utils/envs_tools.py
+index 6fa45dc..6b764fb 100644
+--- a/civtensor/utils/envs_tools.py
++++ b/civtensor/utils/envs_tools.py
+@@ -6,11 +6,11 @@ import gymnasium
+ import numpy as np
+ import torch
+ 
+-from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import FreecivTensorEnv
++from freeciv_gym.envs.freeciv_tensor_env import FreecivTensorEnv
+ from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
+ from freeciv_gym.freeciv.utils.port_list import EVAL_PORT_LIST
+ 
+-# from civtensor.envs.env_wrappers import ShareSubprocVecEnv, DummyVecEnv
++from civtensor.envs.env_wrappers import ShareSubprocVecEnv, DummyVecEnv
+ # from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import FreecivTensorEnv
+ 
+ 
+@@ -32,33 +32,29 @@ def set_seed(args):
+     torch.cuda.manual_seed_all(args["seed"])
+ 
+ 
+-def make_train_env(env, seed, n_threads):
+-    return FreecivTensorEnv(n_threads, DEV_PORT_LIST[0])
++# def make_train_env(env, seed, n_threads):
++#     return FreecivTensorEnv(n_threads, DEV_PORT_LIST[0])
+ 
+ 
+-# def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
+-#     """Make env for training."""
++def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
++    """Make env for training."""
+ 
+-#     print(f"making environments with {n_threads} and env_args: {env_args}")
+-#     env_args = env_args if env_args else {}
+-#     # TODO: distribute ports to ranks
+-#     from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
++    print(f"making environments with {n_threads} and env_args: {env_args}")
++    env_args = env_args if env_args else {}
++    # TODO: distribute ports to ranks
++    from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
+ 
+-#     # TODO: Currently env_args are not useful
+-#     def get_env_fn(rank):
+-#         # TODO: put this somewhere better
+-#         def init_env():
+-#             env = FreecivTensorEnv(client_port=random.choice(DEV_PORT_LIST))
+-#             env.seed(seed + rank * 1000)
+-#             return env
++    # TODO: Currently env_args are not useful
++    def get_env_fn(rank):
++        # TODO: put this somewhere better
++        def init_env():
++            env = FreecivTensorEnv(client_port=random.choice(DEV_PORT_LIST))
++            env.seed(seed + rank * 1000)
++            return env
+ 
+-#         return init_env
++        return init_env
+ 
+-#     if n_threads == 1:
+-#         print(f"got {n_threads} thread")
+-#         return DummyVecEnv(get_env_fn(0))
+-#     else:
+-#         return ShareSubprocVecEnv([get_env_fn(i) for i in range(n_threads)])
++    return DummyVecEnv(get_env_fn(0))
+ 
+ 
+ # def make_eval_env(env_name, seed, n_threads, env_args):
+

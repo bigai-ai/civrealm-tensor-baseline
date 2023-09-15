@@ -110,13 +110,13 @@ class Agent(nn.Module):
         )
 
         self.map_encoder = nn.Sequential(
-            nn.Conv2d(112, 64, 5, 2),
+            nn.Conv2d(112, 64, 3, 2),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 5, 2),
+            nn.Conv2d(64, 64, 3, 2),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(64, 32, 5, 2),
+            nn.Conv2d(64, 32, 3, 2),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.Flatten(),
