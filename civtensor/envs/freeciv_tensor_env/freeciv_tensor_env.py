@@ -18,13 +18,13 @@ class FreecivTensorEnv:
         )
         self.logger = ray_logger_setup()
         self.tensor_env = ParallelTensorEnv(
-            "freeciv/FreecivTensor-v0", parallel_number, port_start
+            "freeciv/FreecivTensorMinitask-v0", parallel_number, port_start
         )
         self.observation_spaces = self.tensor_env.observation_spaces
         self.action_spaces = self.tensor_env.action_spaces
 
     def reset(self):
-        obs_ori, _ = self.tensor_env.reset()
+        obs_ori, _ = self.tensor_env.reset(minitask_pattern="buildcity")
         obs = {}
         for key in [
             "rules",
