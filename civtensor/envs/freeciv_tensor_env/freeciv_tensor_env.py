@@ -20,6 +20,9 @@ class FreecivTensorEnv:
         self.tensor_env = ParallelTensorEnv(
             "freeciv/FreecivTensorMinitask-v0", parallel_number, port_start
         )
+        # self.tensor_env = ParallelTensorEnv(
+        #     "freeciv/FreecivTensor-v0", parallel_number, port_start
+        # )
         self.observation_spaces = self.tensor_env.observation_spaces
         self.action_spaces = self.tensor_env.action_spaces
 
@@ -64,6 +67,7 @@ class FreecivTensorEnv:
         for i in range(batch_size):
             actions.append({key: actions_ori[key][i] for key in keys})
         obs_ori, rew_ori, term_ori, trunc_ori, _ = self.tensor_env.step(actions)
+        # print(self.tensor_env.get_recent_scores())
         obs = {}
         for key in [
             "rules",
