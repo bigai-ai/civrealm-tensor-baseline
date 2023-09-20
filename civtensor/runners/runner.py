@@ -41,7 +41,7 @@ class Runner:
 
         self.envs = make_train_env(
             args["env"],
-            algo_args["seed"]["seed"],
+            None,
             algo_args["train"]["n_rollout_threads"],
         )
         # self.eval_envs = (
@@ -166,7 +166,7 @@ class Runner:
                 value_pred = _t2n(value_pred)
                 rnn_hidden_state = _t2n(rnn_hidden_state)
 
-                obs, reward, term, trunc = self.envs.step(
+                obs, reward, term, trunc, scores = self.envs.step(
                     {
                         "actor_type": actor_type,
                         "city_id": city_id,
@@ -235,6 +235,7 @@ class Runner:
 
                 self.buffer.insert(data)
 
+                data = (*data, scores,)
                 self.logger.per_step(data)
                 print(f"Step {step}")
 

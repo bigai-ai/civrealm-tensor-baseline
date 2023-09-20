@@ -2,12 +2,10 @@ import os
 
 # Disable log deduplication of Ray. This ensures the print messages from all actors can be shown.
 os.environ["RAY_DEDUP_LOGS"] = "0"
-import ray
-
 import numpy as np
-
-from freeciv_gym.freeciv.utils.freeciv_logging import ray_logger_setup
+import ray
 from freeciv_gym.envs.parallel_tensor_env import ParallelTensorEnv
+from freeciv_gym.freeciv.utils.freeciv_logging import ray_logger_setup
 
 
 class FreecivTensorEnv:
@@ -66,7 +64,7 @@ class FreecivTensorEnv:
         actions = []
         for i in range(batch_size):
             actions.append({key: actions_ori[key][i] for key in keys})
-        obs_ori, rew_ori, term_ori, trunc_ori, _ = self.tensor_env.step(actions)
+        obs_ori, rew_ori, term_ori, trunc_ori, info_ori = self.tensor_env.step(actions)
         # print(self.tensor_env.get_recent_scores())
         obs = {}
         for key in [
@@ -94,9 +92,15 @@ class FreecivTensorEnv:
         rew = np.stack(rew_ori)
         term = np.stack(term_ori)
         trunc = np.stack(trunc_ori)
+        score_keys = set(sum((list(info["scores"].keys()) for info in info_ori),[]))
+        scores = {
+            k: np.array([info['scores'][k] if k in info['scores'] else 0 for info in info_ori])
+            for k in score_keys
+        }
         return (
             obs,
             np.expand_dims(rew, -1),
             np.expand_dims(term, -1),
             np.expand_dims(trunc, -1),
+            scores,
         )

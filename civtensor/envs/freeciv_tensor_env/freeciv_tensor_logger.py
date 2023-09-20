@@ -24,6 +24,8 @@ class FreecivTensorLogger:
             self.algo_args["train"]["n_rollout_threads"]
         )
         self.done_episodes_rewards = []
+        self.done_episodes_scores = []
+        self.done_episodes_metrics = {}
 
     def episode_init(self, episode):
         """Initialize the logger for each episode."""
@@ -68,6 +70,7 @@ class FreecivTensorLogger:
             bad_mask,
             reward,
             value_pred,
+            scores
         ) = data
         done = np.logical_not(mask)
         reward_env = reward.flatten()
@@ -76,6 +79,13 @@ class FreecivTensorLogger:
             if done[t]:
                 self.done_episodes_rewards.append(self.train_episode_rewards[t])
                 self.train_episode_rewards[t] = 0
+                for metric, values in scores.items():
+                    if metric == 'score':
+                        self.done_episodes_scores.append(values[t])
+                    elif metric in self.done_episodes_metrics:
+                        self.done_episodes_metrics[metric].append(values[t])
+                    else:
+                        self.done_episodes_metrics[metric] = [values[t]]
 
     def episode_log(self, train_info, buffer):
         """Log information for each episode."""
@@ -106,6 +116,7 @@ class FreecivTensorLogger:
 
         if len(self.done_episodes_rewards) > 0:
             aver_episode_rewards = np.mean(self.done_episodes_rewards)
+            aver_episode_scores = np.mean(self.done_episodes_scores)
             print(
                 "Some episodes done, average episode reward is {}.\n".format(
                     aver_episode_rewards
@@ -116,13 +127,27 @@ class FreecivTensorLogger:
                 {"aver_rewards": aver_episode_rewards},
                 self.total_num_steps,
             )
+            self.writter.add_scalars(
+                "train_episode_scores",
+                {"aver_scores": aver_episode_scores},
+                self.total_num_steps,
+            )
+            for metric, values in self.done_episodes_metrics.items():
+                self.writter.add_scalars(
+                        f"train_episode_{metric}",
+                        {"aver_values":np.mean(values)},
+                        self.total_num_steps
+                )
+
             #### TEMPORARY!!! ####
             self.log_file.write(
-                ",".join(map(str, [self.total_num_steps, aver_episode_rewards])) + "\n"
+                ",".join(map(str, [self.total_num_steps, aver_episode_rewards, aver_episode_scores])) + "\n"
             )
             self.log_file.flush()
             ######################
             self.done_episodes_rewards = []
+            self.done_episodes_scores = []
+            self.done_episodes_metrics = {}
 
     def eval_init(self):
         """Initialize the logger for evaluation."""
