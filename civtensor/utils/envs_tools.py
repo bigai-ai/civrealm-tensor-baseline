@@ -6,7 +6,7 @@ import gymnasium
 import numpy as np
 import torch
 
-from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import FreecivTensorEnv
+from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import TensorBaselineEnv
 from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
 from freeciv_gym.freeciv.utils.port_list import EVAL_PORT_LIST
 
@@ -33,7 +33,7 @@ def set_seed(args):
 
 
 def make_train_env(env, seed, n_threads):
-    return FreecivTensorEnv(n_threads, DEV_PORT_LIST[0])
+    return TensorBaselineEnv(n_threads, DEV_PORT_LIST[0])
 
 
 # def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
