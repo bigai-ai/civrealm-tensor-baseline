@@ -18,9 +18,8 @@ Edit `civtensor/configs/envs_cfgs/freeciv_tensor_env.yaml`
 
 Change `task_name` to `fullgame`
 
-```
+```yaml
 task_name: fullgame
-env_args:
 ```
 
 ## Minigame
@@ -43,19 +42,22 @@ Change `task_name` to `random_minitask`  or any task name in the list of Minitas
     MT_BATTLE_DEFEND_CITY = "battle_defend_city"
     MT_DIPLOMACY_TRADE_TECH = "diplomacy_trade_tech"
 
-```
+```yaml
 task_name: development_build_city # or random_minitask to randomly sample a minitask
-env_args:
+```
+You may optionally specify difficulty level and ids for minitask.
+```yaml
+task_name: development_build_city easy 100 # type level id 
+# unspecified fields would be randomly sampled 
 ```
 
-Remember to set `max_turns` to `100` in freeciv-gym.
 
 # Customize
 Training parameters could be adjusted in `civtensor/configs/algos_cfgs/ppo.yaml`
 
 For training minitask tensor baseline, we used the following default setting:
 
-```
+```yaml
 seed:
   # whether to use the specified seed
   seed_specify: False
@@ -75,6 +77,7 @@ train:
 
 # Notes
 
+- Remember to set `max_turns` to `100` in freeciv-gym for early phase only training.
 - On 3090Ti GPU, I think `n_rollout_threads: 5` and `episode_length: 200` will reach the maximum of its CUDA memory.
 
 
