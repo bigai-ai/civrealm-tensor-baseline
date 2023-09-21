@@ -16,13 +16,19 @@ class TensorBaselineEnv:
             runtime_env={"worker_process_setup_hook": ray_logger_setup},
         )
         self.logger = ray_logger_setup()
-        self.task =task
-        if self.task == "fullgame":
+        self.task_args = task.split(" ")
+        task_type = self.task_args[0]
+        if task_type == "fullgame":
             self.tensor_env = ParallelTensorEnv(
                 "freeciv/FreecivTensor-v0", parallel_number, port_start
             )
-        elif self.task in MinitaskType.list() or self.task == 'random_minitask':
-            task = None if task == 'random_minitask' else task
+        elif task_type in MinitaskType.list() or task_type == "random_minitask":
+            task = {} if task_type == "random_minitask" else {"type": task_type}
+            if len(self.task_args) > 1:
+                assert self.task_args[1] in ['easy', 'normal', 'hard']
+                task["level"] = self.task_args[1]
+            if len(self.task_args) > 2:
+                task["id"] = self.task_args[2]
             self.tensor_env = ParallelTensorEnv(
                 "freeciv/FreecivTensorMinitask-v0",
                 parallel_number,
@@ -30,7 +36,9 @@ class TensorBaselineEnv:
                 minitask_pattern=task,
             )
         else:
-            raise ValueError(f"Expected argument in {['fullgame','random_minitask']+MinitaskType.list()} but got {task}")
+            raise ValueError(
+                f"Expected task type in {['fullgame','random_minitask']+MinitaskType.list()} but got {task}"
+            )
         self.observation_spaces = self.tensor_env.observation_spaces
         self.action_spaces = self.tensor_env.action_spaces
 
