@@ -8,7 +8,7 @@ from freeciv_gym.envs.parallel_tensor_env import ParallelTensorEnv
 from freeciv_gym.freeciv.utils.freeciv_logging import ray_logger_setup
 
 
-class FreecivTensorEnv:
+class TensorBaselineEnv:
     def __init__(self, parallel_number, port_start):
         ray.init(
             local_mode=False,
@@ -16,7 +16,10 @@ class FreecivTensorEnv:
         )
         self.logger = ray_logger_setup()
         self.tensor_env = ParallelTensorEnv(
-            "freeciv/FreecivTensorMinitask-v0", parallel_number, port_start
+            "freeciv/FreecivTensorMinitask-v0",
+            parallel_number,
+            port_start,
+            minitask_pattern="development_build_city",
         )
         # self.tensor_env = ParallelTensorEnv(
         #     "freeciv/FreecivTensor-v0", parallel_number, port_start
@@ -25,7 +28,7 @@ class FreecivTensorEnv:
         self.action_spaces = self.tensor_env.action_spaces
 
     def reset(self):
-        obs_ori, _ = self.tensor_env.reset(minitask_pattern="buildcity")
+        obs_ori, _ = self.tensor_env.reset()
         obs = {}
         for key in [
             "rules",
@@ -92,9 +95,11 @@ class FreecivTensorEnv:
         rew = np.stack(rew_ori)
         term = np.stack(term_ori)
         trunc = np.stack(trunc_ori)
-        score_keys = set(sum((list(info["scores"].keys()) for info in info_ori),[]))
+        score_keys = set(sum((list(info["scores"].keys()) for info in info_ori), []))
         scores = {
-            k: np.array([info['scores'][k] if k in info['scores'] else 0 for info in info_ori])
+            k: np.array(
+                [info["scores"][k] if k in info["scores"] else 0 for info in info_ori]
+            )
             for k in score_keys
         }
         return (
