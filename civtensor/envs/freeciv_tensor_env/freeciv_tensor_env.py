@@ -4,26 +4,33 @@ import os
 os.environ["RAY_DEDUP_LOGS"] = "0"
 import numpy as np
 import ray
+from freeciv_gym.envs.freeciv_minitask_env import MinitaskType
 from freeciv_gym.envs.parallel_tensor_env import ParallelTensorEnv
 from freeciv_gym.freeciv.utils.freeciv_logging import ray_logger_setup
 
 
 class TensorBaselineEnv:
-    def __init__(self, parallel_number, port_start):
+    def __init__(self, parallel_number, port_start, task="fullgame"):
         ray.init(
             local_mode=False,
             runtime_env={"worker_process_setup_hook": ray_logger_setup},
         )
         self.logger = ray_logger_setup()
-        self.tensor_env = ParallelTensorEnv(
-            "freeciv/FreecivTensorMinitask-v0",
-            parallel_number,
-            port_start,
-            minitask_pattern="development_build_city",
-        )
-        # self.tensor_env = ParallelTensorEnv(
-        #     "freeciv/FreecivTensor-v0", parallel_number, port_start
-        # )
+        self.task =task
+        if self.task == "fullgame":
+            self.tensor_env = ParallelTensorEnv(
+                "freeciv/FreecivTensor-v0", parallel_number, port_start
+            )
+        elif self.task in MinitaskType.list() or self.task == 'random_minitask':
+            task = None if task == 'random_minitask' else task
+            self.tensor_env = ParallelTensorEnv(
+                "freeciv/FreecivTensorMinitask-v0",
+                parallel_number,
+                port_start,
+                minitask_pattern=task,
+            )
+        else:
+            raise ValueError(f"Expected argument in {['fullgame','random_minitask']+MinitaskType.list()} but got {task}")
         self.observation_spaces = self.tensor_env.observation_spaces
         self.action_spaces = self.tensor_env.action_spaces
 

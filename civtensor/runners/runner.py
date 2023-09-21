@@ -43,6 +43,7 @@ class Runner:
             args["env"],
             None,
             algo_args["train"]["n_rollout_threads"],
+            env_args["task_name"]
         )
         # self.eval_envs = (
         #     make_eval_env(

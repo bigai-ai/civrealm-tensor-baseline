@@ -1,14 +1,14 @@
 import os
 import random
 import time
-import gymnasium
 
+import gymnasium
 import numpy as np
 import torch
+from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST, EVAL_PORT_LIST
 
-from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import TensorBaselineEnv
-from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST
-from freeciv_gym.freeciv.utils.port_list import EVAL_PORT_LIST
+from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import \
+    TensorBaselineEnv
 
 # from civtensor.envs.env_wrappers import ShareSubprocVecEnv, DummyVecEnv
 # from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import FreecivTensorEnv
@@ -32,8 +32,8 @@ def set_seed(args):
     torch.cuda.manual_seed_all(args["seed"])
 
 
-def make_train_env(env, seed, n_threads):
-    return TensorBaselineEnv(n_threads, DEV_PORT_LIST[0])
+def make_train_env(env, seed, n_threads, task):
+    return TensorBaselineEnv(n_threads, DEV_PORT_LIST[0], task)
 
 
 # def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
