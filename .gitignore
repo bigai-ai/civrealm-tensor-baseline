@@ -174,3 +174,5 @@ cython_debug/
 
 # Built Visual Studio Code Extensions
 *.vsix
+
+examples/game_scores/
