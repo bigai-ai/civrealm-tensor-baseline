@@ -47,7 +47,7 @@ run_battle_defend_city_easy.yaml
 run_battle_defend_city_hard.yaml
 ```
 
-Zhang Shuo
+Chen Shuo
 ```
 run_battle_defend_city_normal.yaml
 run_battle_industry_era_easy.yaml
