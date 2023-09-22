@@ -254,9 +254,6 @@ class Buffer:
 
         self.step = 0
 
-        self.valid_pos = np.full((self.n_rollout_threads,), -1, dtype=np.int64)
-        self.num_to_distr_rew = np.zeros((self.n_rollout_threads,), dtype=np.int64)
-
     def get_mean_rewards(self):
         return np.mean(self.rewards)
 
@@ -301,8 +298,6 @@ class Buffer:
             value_pred,
         ) = data
 
-        self.num_to_distr_rew += 1
-
         self.rules_input[self.step + 1] = rules.copy()
         self.player_input[self.step + 1] = player.copy()
         self.others_player_input[self.step + 1] = others_player.copy()
@@ -337,17 +332,8 @@ class Buffer:
         self.gov_action_type_masks[self.step + 1] = gov_action_type_mask.copy()
         self.masks[self.step + 1] = mask.copy()
         self.bad_masks[self.step + 1] = bad_mask.copy()
+        self.rewards[self.step] = reward.copy()
         self.value_preds[self.step] = value_pred.copy()
-
-        for env_id in range(self.n_rollout_threads):
-            if actor_type[env_id][0] == 3:  # choose turn done
-                self.valid_pos[env_id] = self.step
-                rew_to_distr = reward[env_id][0] / self.num_to_distr_rew[env_id]
-                distr_start_pos = max(self.step - self.num_to_distr_rew[env_id] + 1, 0)
-                self.rewards[distr_start_pos : self.step + 1, env_id] = rew_to_distr
-                self.num_to_distr_rew[env_id] = 0
-            else:
-                self.rewards[self.step][env_id][0] = 0
 
         self.step = (self.step + 1) % self.episode_length
 
@@ -376,22 +362,19 @@ class Buffer:
         self.masks[0] = self.masks[-1].copy()
         self.bad_masks[0] = self.bad_masks[-1].copy()
 
-        self.valid_pos = np.full((self.n_rollout_threads,), -1, dtype=np.int64)
-
     def compute_returns(self, next_value, value_normalizer=None):
         """Compute returns either as discounted sum of rewards, or using GAE.
         Args:
             next_value: (np.ndarray) value predictions for the step after the last episode step.
             value_normalizer: (ValueNorm) If not None, ValueNorm value normalizer instance.
         """
-        self.valid_last_pos = self.valid_pos.min()
         if (
             self.use_proper_time_limits
         ):  # consider the difference between truncation and termination
             if self.use_gae:  # use GAE
                 self.value_preds[-1] = next_value
                 gae = 0
-                for step in reversed(range(self.valid_last_pos + 1)):
+                for step in reversed(range(self.rewards.shape[0])):
                     if value_normalizer is not None:  # use ValueNorm
                         delta = (
                             self.rewards[step]
@@ -424,7 +407,7 @@ class Buffer:
                         self.returns[step] = gae + self.value_preds[step]
             else:  # do not use GAE
                 self.returns[-1] = next_value
-                for step in reversed(range(self.valid_last_pos + 1)):
+                for step in reversed(range(self.rewards.shape[0])):
                     if value_normalizer is not None:  # use ValueNorm
                         self.returns[step] = (
                             self.returns[step + 1] * self.gamma * self.masks[step + 1]
@@ -447,7 +430,7 @@ class Buffer:
             if self.use_gae:  # use GAE
                 self.value_preds[-1] = next_value
                 gae = 0
-                for step in reversed(range(self.valid_last_pos + 1)):
+                for step in reversed(range(self.rewards.shape[0])):
                     if value_normalizer is not None:  # use ValueNorm
                         delta = (
                             self.rewards[step]
@@ -478,7 +461,7 @@ class Buffer:
                         self.returns[step] = gae + self.value_preds[step]
             else:  # do not use GAE
                 self.returns[-1] = next_value
-                for step in reversed(range(self.valid_last_pos + 1)):
+                for step in reversed(range(self.rewards.shape[0])):
                     self.returns[step] = (
                         self.returns[step + 1] * self.gamma * self.masks[step + 1]
                         + self.rewards[step]
@@ -496,73 +479,69 @@ class Buffer:
         # shuffle indices
         perm = torch.randperm(n_rollout_threads).numpy()
 
-        T, N = self.valid_last_pos + 1, num_envs_per_batch
+        T, N = self.episode_length, num_envs_per_batch
 
         # prepare data for each mini batch
         for batch_id in range(num_mini_batch):
             start_id = batch_id * num_envs_per_batch
             ids = perm[start_id : start_id + num_envs_per_batch]
-            rules_batch = _flatten(T, N, self.rules_input[:T, ids])
-            player_batch = _flatten(T, N, self.player_input[:T, ids])
-            others_player_batch = _flatten(T, N, self.others_player_input[:T, ids])
-            unit_batch = _flatten(T, N, self.unit_input[:T, ids])
-            city_batch = _flatten(T, N, self.city_input[:T, ids])
-            others_unit_batch = _flatten(T, N, self.others_unit_input[:T, ids])
-            others_city_batch = _flatten(T, N, self.others_city_input[:T, ids])
-            map_batch = _flatten(T, N, self.map_input[:T, ids])
+            rules_batch = _flatten(T, N, self.rules_input[:-1, ids])
+            player_batch = _flatten(T, N, self.player_input[:-1, ids])
+            others_player_batch = _flatten(T, N, self.others_player_input[:-1, ids])
+            unit_batch = _flatten(T, N, self.unit_input[:-1, ids])
+            city_batch = _flatten(T, N, self.city_input[:-1, ids])
+            others_unit_batch = _flatten(T, N, self.others_unit_input[:-1, ids])
+            others_city_batch = _flatten(T, N, self.others_city_input[:-1, ids])
+            map_batch = _flatten(T, N, self.map_input[:-1, ids])
             others_player_masks_batch = _flatten(
-                T, N, self.others_player_masks[:T, ids]
+                T, N, self.others_player_masks[:-1, ids]
             )
-            unit_masks_batch = _flatten(T, N, self.unit_masks[:T, ids])
-            city_masks_batch = _flatten(T, N, self.city_masks[:T, ids])
-            others_unit_masks_batch = _flatten(T, N, self.others_unit_masks[:T, ids])
-            others_city_masks_batch = _flatten(T, N, self.others_city_masks[:T, ids])
+            unit_masks_batch = _flatten(T, N, self.unit_masks[:-1, ids])
+            city_masks_batch = _flatten(T, N, self.city_masks[:-1, ids])
+            others_unit_masks_batch = _flatten(T, N, self.others_unit_masks[:-1, ids])
+            others_city_masks_batch = _flatten(T, N, self.others_city_masks[:-1, ids])
             rnn_hidden_states_batch = self.rnn_hidden_states[0:1, ids]
-            old_value_preds_batch = _flatten(T, N, self.value_preds[:T, ids])
-            return_batch = _flatten(T, N, self.returns[:T, ids])
-            adv_targ = _flatten(T, N, advantages[:T, ids])
-            actor_type_batch = _flatten(T, N, self.actor_type_output[:T, ids])
+            old_value_preds_batch = _flatten(T, N, self.value_preds[:-1, ids])
+            return_batch = _flatten(T, N, self.returns[:-1, ids])
+            adv_targ = _flatten(T, N, advantages[:, ids])
+            actor_type_batch = _flatten(T, N, self.actor_type_output[:, ids])
             old_actor_type_log_probs_batch = _flatten(
-                T, N, self.actor_type_log_probs[:T, ids]
+                T, N, self.actor_type_log_probs[:, ids]
             )
-            actor_type_masks_batch = _flatten(T, N, self.actor_type_masks[:T, ids])
-            city_id_batch = _flatten(T, N, self.city_id_output[:T, ids])
-            old_city_id_log_probs_batch = _flatten(
-                T, N, self.city_id_log_probs[:T, ids]
-            )
-            city_id_masks_batch = _flatten(T, N, self.city_id_masks[:T, ids])
+            actor_type_masks_batch = _flatten(T, N, self.actor_type_masks[:-1, ids])
+            city_id_batch = _flatten(T, N, self.city_id_output[:, ids])
+            old_city_id_log_probs_batch = _flatten(T, N, self.city_id_log_probs[:, ids])
+            city_id_masks_batch = _flatten(T, N, self.city_id_masks[:-1, ids])
             city_action_type_batch = _flatten(
-                T, N, self.city_action_type_output[:T, ids]
+                T, N, self.city_action_type_output[:, ids]
             )
             old_city_action_type_log_probs_batch = _flatten(
-                T, N, self.city_action_type_log_probs[:T, ids]
+                T, N, self.city_action_type_log_probs[:, ids]
             )
             city_action_type_masks_batch = _flatten(
-                T, N, self.city_action_type_masks[:T, ids]
+                T, N, self.city_action_type_masks[:-1, ids]
             )
-            unit_id_batch = _flatten(T, N, self.unit_id_output[:T, ids])
-            old_unit_id_log_probs_batch = _flatten(
-                T, N, self.unit_id_log_probs[:T, ids]
-            )
-            unit_id_masks_batch = _flatten(T, N, self.unit_id_masks[:T, ids])
+            unit_id_batch = _flatten(T, N, self.unit_id_output[:, ids])
+            old_unit_id_log_probs_batch = _flatten(T, N, self.unit_id_log_probs[:, ids])
+            unit_id_masks_batch = _flatten(T, N, self.unit_id_masks[:-1, ids])
             unit_action_type_batch = _flatten(
-                T, N, self.unit_action_type_output[:T, ids]
+                T, N, self.unit_action_type_output[:, ids]
             )
             old_unit_action_type_log_probs_batch = _flatten(
-                T, N, self.unit_action_type_log_probs[:T, ids]
+                T, N, self.unit_action_type_log_probs[:, ids]
             )
             unit_action_type_masks_batch = _flatten(
-                T, N, self.unit_action_type_masks[:T, ids]
+                T, N, self.unit_action_type_masks[:-1, ids]
             )
-            gov_action_type_batch = _flatten(T, N, self.gov_action_type_output[:T, ids])
+            gov_action_type_batch = _flatten(T, N, self.gov_action_type_output[:, ids])
             old_gov_action_type_log_probs_batch = _flatten(
-                T, N, self.gov_action_type_log_probs[:T, ids]
+                T, N, self.gov_action_type_log_probs[:, ids]
             )
             gov_action_type_masks_batch = _flatten(
-                T, N, self.gov_action_type_masks[:T, ids]
+                T, N, self.gov_action_type_masks[:-1, ids]
             )
-            masks_batch = _flatten(T, N, self.masks[:T, ids])
-            bad_masks_batch = _flatten(T, N, self.bad_masks[:T, ids])
+            masks_batch = _flatten(T, N, self.masks[:-1, ids])
+            bad_masks_batch = _flatten(T, N, self.bad_masks[:-1, ids])
 
             rnn_hidden_states_batch = rnn_hidden_states_batch.squeeze(0)
 
