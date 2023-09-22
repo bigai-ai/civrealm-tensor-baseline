@@ -124,3 +124,10 @@ class TensorBaselineEnv:
             np.expand_dims(trunc, -1),
             scores,
         )
+
+    def close(self):
+        try:
+            self.tensor_env.close()
+        except Exception as e:
+            print(e)
+        ray.shutdown()

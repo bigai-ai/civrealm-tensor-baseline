@@ -1,4 +1,5 @@
 import setproctitle
+import os
 
 import numpy as np
 import torch
@@ -253,7 +254,7 @@ class Runner:
                 )
 
                 #### TEMPORARY ####
-                self.save()
+                self.save(episode)
                 ###################
 
             # eval
@@ -546,15 +547,17 @@ class Runner:
         """Prepare for rollout."""
         self.algo.prep_rollout()
 
-    def save(self):
+    def save(self, episode):
+        save_dir = str(self.save_dir)+f"/episode_{episode}"
+        os.makedirs(save_dir, exist_ok=True)
         torch.save(
             self.algo.agent.state_dict(),
-            str(self.save_dir) + "/agent.pt",
+            save_dir + "/agent.pt",
         )
         if self.value_normalizer is not None:
             torch.save(
                 self.value_normalizer.state_dict(),
-                str(self.save_dir) + "/value_normalizer" + ".pt",
+                save_dir + "/value_normalizer" + ".pt",
             )
 
     def restore(self):
