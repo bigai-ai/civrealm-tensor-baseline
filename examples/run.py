@@ -4,6 +4,7 @@ import yaml
 from civtensor.utils.configs_tools import get_defaults_yaml_args, update_args
 import os
 import ray
+import time
 
 
 def main():
@@ -38,6 +39,7 @@ def main():
                 runner.close()
             except Exception as e:
                 print(e)
+            time.sleep(15)
             
 
 
