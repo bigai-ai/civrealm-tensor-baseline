@@ -3,7 +3,6 @@ import argparse
 import yaml
 from civtensor.utils.configs_tools import get_defaults_yaml_args, update_args
 import os
-import ray
 import time
 
 
