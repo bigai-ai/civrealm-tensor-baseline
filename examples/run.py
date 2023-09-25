@@ -4,10 +4,25 @@ import yaml
 from civtensor.utils.configs_tools import get_defaults_yaml_args, update_args
 import os
 import time
+import subprocess
 
 
 def main():
     """Main function."""
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument(
+        "--webdir",
+        type=str,
+        default="../../freeciv-web/",
+        help="directory of freeciv-web repo",
+    )
+    webdir = parser.parse_known_args()[0].webdir
+    assert os.path.exists(webdir), f"Cannot find directory of freeciv-web repo, {webdir}"
+    def web_docker_cmd(cmd):
+            subprocess.call(f"cd {webdir} && "+cmd, shell=True, executable='/bin/bash')
+
     args = {'algo':'ppo',"env":"freeciv_tensor_env","exp_name":"iclr"}
 
     config_args = []
@@ -39,6 +54,10 @@ def main():
                 print(f"\n==== Runner for task {runner_args['env_args']['task_name']} closed! ====")
             except Exception as e:
                 print(e)
+            print(f"!!! Freeciv-web Docker in {webdir} closing down... !!! ")
+            web_docker_cmd("docker compose down")
+            print(f"!!! Freeciv-web Docker in {webdir} restarting... !!! ")
+            web_docker_cmd("docker compose up -d")
             time.sleep(15)
             
 
