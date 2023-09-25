@@ -29,7 +29,7 @@ task_name: fullgame
 examples/run.py will run all minitasks specified in `examples/run_configs` including $`12\text{ types}\times 3\text{ levels} = 36 \text{ runs}`$
 ```sh
 cd exmaples
-python run.py
+python run.py --webdir $freeciv-web-dr
 ```
 
 ### Minitask Expreiment Decompositions
