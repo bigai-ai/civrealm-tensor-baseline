@@ -27,15 +27,16 @@ def main():
         (runner_args, run_times) = config_arg
         for i in range(run_times):
             try:
-                print(f"Runing for task {runner_args['env_args']['task_name']} for the {i}-th time")
+                print(f"\n==== Runing for task {runner_args['env_args']['task_name']} for the {i}-th time ====")
                 runner = Runner(**runner_args)
                 runner.run()
-                print(f"Runner for task {runner_args['env_args']['task_name']} the {i}-th time finished!")
+                print(f"\n==== Runner for task {runner_args['env_args']['task_name']} the {i}-th time finished! ====")
             except Exception as e:
-                print(f"Runner for task {runner_args['env_args']['task_name']} aborted!")
+                print(f"\n==== Runner for task {runner_args['env_args']['task_name']} aborted! ====")
                 print(e)
             try:
                 runner.close()
+                print(f"\n==== Runner for task {runner_args['env_args']['task_name']} closed! ====")
             except Exception as e:
                 print(e)
             time.sleep(15)

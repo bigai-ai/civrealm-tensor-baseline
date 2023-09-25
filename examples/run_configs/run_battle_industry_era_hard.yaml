@@ -1,7 +1,7 @@
 algo_args:
   algo:
     clip_param: 0.2
-    entropy_coef: 0.01
+    entropy_coef: 0.1
     gae_lambda: 0.95
     gamma: 0.99
     huber_delta: 10.0
@@ -12,7 +12,7 @@ algo_args:
     use_gae: true
     use_huber_loss: true
     use_max_grad_norm: true
-    value_loss_coef: 0.001
+    value_loss_coef: 1
   device:
     cuda: true
     cuda_deterministic: true
@@ -46,7 +46,7 @@ algo_args:
     model_dir: null
     n_eval_rollout_threads: 1
     n_rollout_threads: 8
-    num_env_steps: 20000
+    num_env_steps: 40000
     use_eval: false
     use_linear_lr_decay: false
     use_proper_time_limits: true
