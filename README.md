@@ -43,51 +43,51 @@ Please delete configs files that are out of your responsibility.
 
 Qi Siyuan
 ```
-run_battle_ancient_era_easy.yaml
-run_battle_ancient_era_hard.yaml
-run_battle_ancient_era_normal.yaml
-run_battle_attack_city_easy.yaml
-run_battle_attack_city_hard.yaml
-run_battle_attack_city_normal.yaml
-run_battle_defend_city_easy.yaml
-run_battle_defend_city_hard.yaml
+run_battle_ancient_era_easy.yaml ✅
+run_battle_ancient_era_hard.yaml ✅
+run_battle_ancient_era_normal.yaml ✅ 
+run_battle_attack_city_easy.yaml  ✅
+run_battle_attack_city_hard.yaml 2/3 ❓
+run_battle_attack_city_normal.yaml ✅
+run_battle_defend_city_easy.yaml ✅
+run_battle_defend_city_hard.yaml ✅
 ```
 
 Chen Shuo
 ```
-run_battle_defend_city_normal.yaml
-run_battle_industry_era_easy.yaml
-run_battle_industry_era_hard.yaml
-run_battle_industry_era_normal.yaml
-run_battle_info_era_easy.yaml
-run_battle_info_era_hard.yaml
-run_battle_info_era_normal.yaml
-run_battle_medieval_easy.yaml
+run_battle_defend_city_normal.yaml ✅
+run_battle_industry_era_easy.yaml ✅
+run_battle_industry_era_hard.yaml ✅
+run_battle_industry_era_normal.yaml ✅
+run_battle_info_era_easy.yaml ✅
+run_battle_info_era_hard.yaml ✅
+run_battle_info_era_normal.yaml ✅
+run_battle_medieval_easy.yaml ✅
 ```
 
 Zhang Xiaoyuan
 ```
-run_battle_medieval_hard.yaml
-run_battle_medieval_normal.yaml
-run_battle_modern_era_easy.yaml
-run_battle_modern_era_hard.yaml
-run_battle_modern_era_normal.yaml
-run_battle_naval_easy.yaml
-run_battle_naval_hard.yaml
-run_battle_naval_modern_easy.yaml
+run_battle_medieval_hard.yaml ✅
+run_battle_medieval_normal.yaml ✅
+run_battle_modern_era_easy.yaml ✅
+run_battle_modern_era_hard.yaml ✅
+run_battle_modern_era_normal.yaml ✅
+run_battle_naval_easy.yaml ✅
+run_battle_naval_hard.yaml ✅
+run_battle_naval_modern_easy.yaml ✅
 ```
 
 Yang Bangcheng
 ```
-run_battle_naval_modern_hard.yaml
-run_battle_naval_modern_normal.yaml
-run_battle_naval_normal.yaml
-run_development_build_city_easy.yaml
-run_development_build_city_hard.yaml
-run_development_build_city_normal.yaml
-run_development_citytile_wonder_easy.yaml
-run_development_citytile_wonder_hard.yaml
-run_development_citytile_wonder_normal.yaml
+run_battle_naval_modern_hard.yaml 2/3 ❓
+run_battle_naval_modern_normal.yaml ❌
+run_battle_naval_normal.yaml ✅
+run_development_build_city_easy.yaml 1/3 ❓
+run_development_build_city_hard.yaml ❌
+run_development_build_city_normal.yaml ✅
+run_development_citytile_wonder_easy.yaml ❌
+run_development_citytile_wonder_hard.yaml 2/3 ❓
+run_development_citytile_wonder_normal.yaml ✅
 ```
 
 ### Single Run
