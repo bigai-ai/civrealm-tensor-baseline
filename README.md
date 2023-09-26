@@ -32,6 +32,12 @@ cd exmaples
 python run.py --webdir $freeciv-web-dr
 ```
 
+### Share Your Expreiment Results 
+```sh
+sudo mount 10.1.101.98:/home/ybc/nfs ~/nfs_test
+cp -r ./examples/results ~/nfs_test/.
+```
+
 ### Minitask Expreiment Decompositions
 Please delete configs files that are out of your responsibility.
 
