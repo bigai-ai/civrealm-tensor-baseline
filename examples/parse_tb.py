@@ -184,7 +184,7 @@ class TbSummary:
 
         minitasks = minitasks[
             (minitasks["type"] == task_type) & (minitasks["tag"] == y_label)
-        ][["seed", "value", x_label]]
+        ][["seed", "value","level", x_label]]
         self.plot_metrics(
             data=minitasks,
             x_label=x_label,
@@ -264,6 +264,7 @@ class TbSummary:
                 self.plot_fullgame(y_label=metric)
                 if save:
                     plt.tight_layout()
+                    plt.legend([],[], frameon=False)
                     plt.savefig(
                         os.path.join(fig_dir, f"fullgame_{metric}.jpg"),
                         dpi=500,
@@ -275,6 +276,6 @@ class TbSummary:
 
 
 if __name__ == "__main__":
-    summary = TbSummary('~/nfs_test')
+    summary = TbSummary('~/nfs')
     summary.plot_minitask_result()
     summary.plot_fullgame_result()
