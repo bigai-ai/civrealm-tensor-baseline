@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 import copy
 
 from gymnasium import Wrapper
-from freeciv_gym.envs.freeciv_wrapper.utils import expand_dim
+from civrealm.envs.freeciv_wrapper.utils import expand_dim
 
 def tile_images(img_nhwc):
     """

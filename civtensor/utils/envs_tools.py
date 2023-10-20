@@ -5,7 +5,7 @@ import time
 import gymnasium
 import numpy as np
 import torch
-from freeciv_gym.freeciv.utils.port_list import DEV_PORT_LIST, EVAL_PORT_LIST
+from civrealm.freeciv.utils.port_list import DEV_PORT_LIST, EVAL_PORT_LIST
 
 from civtensor.envs.freeciv_tensor_env.freeciv_tensor_env import \
     TensorBaselineEnv

@@ -4,9 +4,9 @@ import os
 os.environ["RAY_DEDUP_LOGS"] = "0"
 import numpy as np
 import ray
-from freeciv_gym.envs.freeciv_minitask_env import MinitaskType
-from freeciv_gym.envs.parallel_tensor_env import ParallelTensorEnv
-from freeciv_gym.freeciv.utils.freeciv_logging import ray_logger_setup
+from civrealm.envs.freeciv_minitask_env import MinitaskType
+from civrealm.envs.parallel_tensor_env import ParallelTensorEnv
+from civrealm.freeciv.utils.freeciv_logging import ray_logger_setup
 
 
 class TensorBaselineEnv:
