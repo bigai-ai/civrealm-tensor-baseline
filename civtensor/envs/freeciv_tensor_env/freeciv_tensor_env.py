@@ -10,7 +10,7 @@ from civrealm.freeciv.utils.freeciv_logging import ray_logger_setup
 
 
 class TensorBaselineEnv:
-    def __init__(self, parallel_number, port_start, task="fullgame"):
+    def __init__(self, parallel_number, task="fullgame"):
         ray.init(
             local_mode=False,
             runtime_env={"worker_process_setup_hook": ray_logger_setup},
@@ -20,7 +20,7 @@ class TensorBaselineEnv:
         task_type = self.task_args[0]
         if task_type == "fullgame":
             self.tensor_env = ParallelTensorEnv(
-                "freeciv/FreecivTensor-v0", parallel_number, port_start
+                "freeciv/FreecivTensor-v0", parallel_number,
             )
         elif task_type in MinitaskType.list() or task_type == "random_minitask":
             task = {} if task_type == "random_minitask" else {"type": task_type}
@@ -32,7 +32,6 @@ class TensorBaselineEnv:
             self.tensor_env = ParallelTensorEnv(
                 "freeciv/FreecivTensorMinitask-v0",
                 parallel_number,
-                port_start,
                 minitask_pattern=task,
             )
         else:

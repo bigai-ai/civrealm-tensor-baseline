@@ -33,7 +33,7 @@ def set_seed(args):
 
 
 def make_train_env(env, seed, n_threads, task):
-    return TensorBaselineEnv(n_threads, DEV_PORT_LIST[0], task)
+    return TensorBaselineEnv(n_threads, task)
 
 
 # def make_train_env(env, seed, n_threads, env_args) -> gymnasium.Env:
