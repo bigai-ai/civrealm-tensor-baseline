@@ -410,7 +410,11 @@ class Agent(nn.Module):
 
         # action step
         # actor type head
+        # TODO: Remove this after tech and dipl env to be added
+        # WARN: This must be deleted!!!!
+        actor_type_mask[:,3] = 0
         actor_type_distribution = self.actor_type_head(rnn_out, actor_type_mask)
+
         actor_type = (
             actor_type_distribution.mode()
             if deterministic

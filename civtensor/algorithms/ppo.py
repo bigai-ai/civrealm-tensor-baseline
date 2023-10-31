@@ -278,7 +278,8 @@ class PPO:
             * (actor_type_dist_entropy + unit_action_type_dist_entropy)
             + (actor_type_batch == 2)
             * (actor_type_dist_entropy + gov_action_type_dist_entropy)
-            + (actor_type_batch == 3) * (actor_type_dist_entropy)
+            # WARN: this is sensitive to the position of turn done action
+            + (actor_type_batch == 4) * (actor_type_dist_entropy)
         ).mean()
 
         ratio = torch.exp(action_log_probs_batch - old_action_log_probs_batch)
