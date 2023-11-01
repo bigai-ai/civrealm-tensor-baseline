@@ -15,7 +15,7 @@ def main():
     parser.add_argument(
         "--webdir",
         type=str,
-        default="../../freeciv-web/",
+        default=os.path.join("..","..","freeciv-web"),
         help="directory of freeciv-web repo",
     )
     webdir = parser.parse_known_args()[0].webdir

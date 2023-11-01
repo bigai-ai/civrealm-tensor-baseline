@@ -1,16 +1,17 @@
-import setproctitle
 import os
 
 import numpy as np
+import setproctitle
 import torch
 
 from civtensor.algorithms.ppo import PPO
 from civtensor.common.buffer import Buffer
 from civtensor.common.valuenorm import ValueNorm
-from civtensor.envs.freeciv_tensor_env.freeciv_tensor_logger import FreecivTensorLogger
-from civtensor.utils.envs_tools import set_seed, make_train_env
-from civtensor.utils.models_tools import init_device
+from civtensor.envs.freeciv_tensor_env.freeciv_tensor_logger import \
+    FreecivTensorLogger
 from civtensor.utils.configs_tools import init_dir, save_config
+from civtensor.utils.envs_tools import make_train_env, set_seed
+from civtensor.utils.models_tools import init_device
 from civtensor.utils.trans_tools import _t2n
 
 
@@ -44,7 +45,7 @@ class Runner:
             args["env"],
             None,
             algo_args["train"]["n_rollout_threads"],
-            env_args["task_name"]
+            env_args["task_name"],
         )
         # TODO: add self.eval_envs for evaluation
         self.eval_envs = None
@@ -239,7 +240,10 @@ class Runner:
 
                 self.buffer.insert(data)
 
-                data = (*data, scores,)
+                data = (
+                    *data,
+                    scores,
+                )
                 self.logger.per_step(data)
                 print(f"Step {step}")
 
@@ -550,26 +554,29 @@ class Runner:
         self.algo.prep_rollout()
 
     def save(self, episode):
-        save_dir = str(self.save_dir)+f"/episode_{episode}"
+        save_dir = os.path.join(str(self.save_dir), f"episode_{episode}")
         os.makedirs(save_dir, exist_ok=True)
         torch.save(
             self.algo.agent.state_dict(),
-            save_dir + "/agent.pt",
+            os.path.join(save_dir, "agent.pt"),
         )
         if self.value_normalizer is not None:
             torch.save(
                 self.value_normalizer.state_dict(),
-                save_dir + "/value_normalizer" + ".pt",
+                os.path.join(save_dir, "value_normalizer.pt"),
             )
 
     def restore(self):
         agent_state_dict = torch.load(
-            str(self.algo_args["train"]["model_dir"]) + "/agent.pt"
+            os.path.join(str(self.algo_args["train"]["model_dir"]), "agent.pt")
         )
         self.algo.agent.load_state_dict(agent_state_dict)
         if self.value_normalizer is not None:
             value_normalizer_state_dict = torch.load(
-                str(self.algo_args["train"]["model_dir"]) + "/value_normalizer" + ".pt"
+                os.path.join(
+                    str(self.algo_args["train"]["model_dir"]),
+                    "value_normalizer.pt",
+                )
             )
             self.value_normalizer.load_state_dict(value_normalizer_state_dict)
 
@@ -577,6 +584,8 @@ class Runner:
         self.envs.close()
         if self.eval_envs is not None:
             self.eval_envs.close()
-        self.writter.export_scalars_to_json(str(self.log_dir + "/summary.json"))
+        self.writter.export_scalars_to_json(
+            os.path.join(str(self.log_dir), "summary.json")
+        )
         self.writter.close()
         self.logger.close()
