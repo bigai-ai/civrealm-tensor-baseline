@@ -11,9 +11,9 @@ setup(
     install_requires=[
         "torch>=1.9.0",
         "pyyaml>=5.3.1",
-        "tensorboard>=2.2.1; platform_system!='windows'",
-        "tensorboard @ git+https://github.com/DumbMice/tensorboardX.git@master; platform_system=='windows'",
-        "tensorboardX",
+        "tensorboardX>=2.2.1; platform_system!='windows'",
+        "tensorboardX @ git+https://github.com/DumbMice/tensorboardX.git@master; platform_system=='windows'",
+        "tensorboard",
         "setproctitle",
     ],
     classifiers=[
