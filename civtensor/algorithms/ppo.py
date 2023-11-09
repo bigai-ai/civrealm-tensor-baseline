@@ -109,6 +109,7 @@ class PPO:
             others_player_batch,
             unit_batch,
             city_batch,
+            dipl_batch,
             others_unit_batch,
             others_city_batch,
             map_batch,
@@ -136,9 +137,18 @@ class PPO:
             unit_action_type_batch,
             old_unit_action_type_log_probs_batch,
             unit_action_type_masks_batch,
+            dipl_id_batch,
+            old_dipl_id_log_probs_batch,
+            dipl_id_masks_batch,
+            dipl_action_type_batch,
+            old_dipl_action_type_log_probs_batch,
+            dipl_action_type_masks_batch,
             gov_action_type_batch,
             old_gov_action_type_log_probs_batch,
             gov_action_type_masks_batch,
+            tech_action_type_batch,
+            old_tech_action_type_log_probs_batch,
+            tech_action_type_masks_batch,
             masks_batch,
             bad_masks_batch,
         ) = sample
@@ -148,6 +158,7 @@ class PPO:
         others_player_batch = check(others_player_batch).to(self.device)
         unit_batch = check(unit_batch).to(self.device)
         city_batch = check(city_batch).to(self.device)
+        dipl_batch = check(dipl_batch).to(self.device)
         others_unit_batch = check(others_unit_batch).to(self.device)
         others_city_batch = check(others_city_batch).to(self.device)
         map_batch = check(map_batch).to(self.device)
@@ -185,11 +196,26 @@ class PPO:
         unit_action_type_masks_batch = check(unit_action_type_masks_batch).to(
             self.device
         )
+        dipl_id_batch = check(dipl_id_batch).to(self.device)
+        old_dipl_id_log_probs_batch = check(old_dipl_id_log_probs_batch).to(self.device)
+        dipl_id_masks_batch = check(dipl_id_masks_batch).to(self.device)
+        dipl_action_type_batch = check(dipl_action_type_batch).to(self.device)
+        old_dipl_action_type_log_probs_batch = check(
+            old_dipl_action_type_log_probs_batch
+        ).to(self.device)
+        dipl_action_type_masks_batch = check(dipl_action_type_masks_batch).to(
+            self.device
+        )
         gov_action_type_batch = check(gov_action_type_batch).to(self.device)
         old_gov_action_type_log_probs_batch = check(
             old_gov_action_type_log_probs_batch
         ).to(self.device)
         gov_action_type_masks_batch = check(gov_action_type_masks_batch).to(self.device)
+        tech_action_type_batch = check(tech_action_type_batch).to(self.device)
+        old_tech_action_type_log_probs_batch = check(
+            old_tech_action_type_log_probs_batch
+        ).to(self.device)
+        tech_action_type_masks_batch = check(tech_action_type_masks_batch).to(self.device)
         masks_batch = check(masks_batch).to(self.device)
         bad_masks_batch = check(bad_masks_batch).to(self.device)
 
@@ -202,8 +228,13 @@ class PPO:
             unit_id_log_probs_batch,
             unit_action_type_log_probs_batch,
             unit_action_type_dist_entropy,
+            dipl_id_log_probs_batch,
+            dipl_action_type_log_probs_batch,
+            dipl_action_type_dist_entropy,
             gov_action_type_log_probs_batch,
             gov_action_type_dist_entropy,
+            tech_action_type_log_probs_batch,
+            tech_action_type_dist_entropy,
             value_preds_batch,
         ) = self.agent.evaluate_actions(
             rules_batch,
@@ -211,6 +242,7 @@ class PPO:
             others_player_batch,
             unit_batch,
             city_batch,
+            dipl_batch,
             others_unit_batch,
             others_city_batch,
             map_batch,
@@ -230,27 +262,41 @@ class PPO:
             unit_id_masks_batch,
             unit_action_type_batch,
             unit_action_type_masks_batch,
+            dipl_id_batch,
+            dipl_id_masks_batch,
+            dipl_action_type_batch,
+            dipl_action_type_masks_batch,
             gov_action_type_batch,
             gov_action_type_masks_batch,
+            tech_action_type_batch,
+            tech_action_type_masks_batch,
             masks_batch,
         )
 
         action_log_probs_batch = (
-            (actor_type_batch == 0)
+            (actor_type_batch == 0) # city
             * (
                 actor_type_log_probs_batch
                 + city_id_log_probs_batch
                 + city_action_type_log_probs_batch
             )
-            + (actor_type_batch == 1)
+            + (actor_type_batch == 1) # unit
             * (
                 actor_type_log_probs_batch
                 + unit_id_log_probs_batch
                 + unit_action_type_log_probs_batch
             )
-            + (actor_type_batch == 2)
+            + (actor_type_batch == 2) # gov
             * (actor_type_log_probs_batch + gov_action_type_log_probs_batch)
-            + (actor_type_batch == 5) * (actor_type_log_probs_batch)
+            + (actor_type_batch == 3) # tech
+            * (actor_type_log_probs_batch + tech_action_type_log_probs_batch)
+            + (actor_type_batch == 4) # dipl
+            * (
+                actor_type_log_probs_batch
+                + dipl_id_log_probs_batch
+                + dipl_action_type_log_probs_batch
+            )
+            + (actor_type_batch == 5) * (actor_type_log_probs_batch) # turn done
         )
 
         old_action_log_probs_batch = (
@@ -268,6 +314,14 @@ class PPO:
             )
             + (actor_type_batch == 2)
             * (old_actor_type_log_probs_batch + old_gov_action_type_log_probs_batch)
+            + (actor_type_batch == 3)
+            * (old_actor_type_log_probs_batch + old_tech_action_type_log_probs_batch)
+            + (actor_type_batch == 4)
+            * (
+                old_actor_type_log_probs_batch
+                + old_dipl_id_log_probs_batch
+                + old_dipl_action_type_log_probs_batch
+            )
             + (actor_type_batch == 5) * (old_actor_type_log_probs_batch)
         )
 
@@ -278,7 +332,10 @@ class PPO:
             * (actor_type_dist_entropy + unit_action_type_dist_entropy)
             + (actor_type_batch == 2)
             * (actor_type_dist_entropy + gov_action_type_dist_entropy)
-            # WARN: this is sensitive to the position of turn done action
+            + (actor_type_batch == 3)
+            * (actor_type_dist_entropy + tech_action_type_dist_entropy)
+            + (actor_type_batch == 4)
+            * (actor_type_dist_entropy + dipl_action_type_dist_entropy)
             + (actor_type_batch == 5) * (actor_type_dist_entropy)
         ).mean()
 

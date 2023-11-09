@@ -36,6 +36,9 @@ class Buffer:
         self.others_city_dim = self.observation_spaces["others_city"].shape[
             1
         ]  # or Sequence?
+        self.dipl_dim = self.observation_spaces["dipl"].shape[
+            1
+        ]  # or Sequence?
         self.map_dim = self.observation_spaces["map"].shape
         self.xsize, self.ysize, self.map_channels = self.map_dim
         self.n_max_others_player = self.observation_spaces["others_player"].shape[0]
@@ -43,12 +46,15 @@ class Buffer:
         self.n_max_city = self.observation_spaces["city"].shape[0]
         self.n_max_others_unit = self.observation_spaces["others_unit"].shape[0]
         self.n_max_others_city = self.observation_spaces["others_city"].shape[0]
+        self.n_max_dipl = self.observation_spaces["dipl"].shape[0]
 
         # obtain output dimensions. TODO: be consistent with env
         self.actor_type_dim = self.action_spaces["actor_type"].n
         self.city_action_type_dim = self.action_spaces["city_action_type"].n
         self.unit_action_type_dim = self.action_spaces["unit_action_type"].n
         self.gov_action_type_dim = self.action_spaces["gov_action_type"].n
+        self.dipl_action_type_dim = self.action_spaces["dipl_action_type"].n
+        self.tech_action_type_dim = self.action_spaces["tech_action_type"].n
 
         # init buffers
         self.rules_input = np.zeros(
@@ -104,6 +110,16 @@ class Buffer:
             ),
             dtype=np.float32,
         )
+        self.dipl_input = np.zeros(
+            (
+                self.episode_length + 1,
+                self.n_rollout_threads,
+                self.n_max_dipl,
+                self.dipl_dim,
+            ),
+            dtype=np.float32,
+        )
+
         self.map_input = np.zeros(
             (self.episode_length + 1, self.n_rollout_threads, *self.map_dim),
             dtype=np.float32,
@@ -233,6 +249,34 @@ class Buffer:
             dtype=np.int64,
         )
 
+        self.dipl_id_output = np.zeros(
+            (self.episode_length, self.n_rollout_threads, 1), dtype=np.int64
+        )
+        self.dipl_id_log_probs = np.zeros(
+            (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
+        )
+        self.dipl_id_masks = np.ones(
+            (self.episode_length + 1, self.n_rollout_threads, self.n_max_dipl, 1),
+            dtype=np.int64,
+        )
+
+        self.dipl_action_type_output = np.zeros(
+            (self.episode_length, self.n_rollout_threads, 1),
+            dtype=np.int64,
+        )
+        self.dipl_action_type_log_probs = np.zeros(
+            (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
+        )
+        self.dipl_action_type_masks = np.ones(
+            (
+                self.episode_length + 1,
+                self.n_rollout_threads,
+                self.n_max_dipl,
+                self.dipl_action_type_dim,
+            ),
+            dtype=np.int64,
+        )
+
         self.gov_action_type_output = np.zeros(
             (self.episode_length, self.n_rollout_threads, 1),
             dtype=np.int64,
@@ -242,6 +286,18 @@ class Buffer:
         )
         self.gov_action_type_masks = np.ones(
             (self.episode_length + 1, self.n_rollout_threads, self.gov_action_type_dim),
+            dtype=np.int64,
+        )
+
+        self.tech_action_type_output = np.zeros(
+            (self.episode_length, self.n_rollout_threads, 1),
+            dtype=np.int64,
+        )
+        self.tech_action_type_log_probs = np.zeros(
+            (self.episode_length, self.n_rollout_threads, 1), dtype=np.float32
+        )
+        self.tech_action_type_masks = np.ones(
+            (self.episode_length + 1, self.n_rollout_threads, self.tech_action_type_dim),
             dtype=np.int64,
         )
 
@@ -265,6 +321,7 @@ class Buffer:
             others_player,
             unit,
             city,
+            dipl,
             others_unit,
             others_city,
             map,
@@ -289,9 +346,18 @@ class Buffer:
             unit_action_type,
             unit_action_type_log_prob,
             unit_action_type_mask,
+            dipl_id,
+            dipl_id_log_prob,
+            dipl_id_mask,
+            dipl_action_type,
+            dipl_action_type_log_prob,
+            dipl_action_type_mask,
             gov_action_type,
             gov_action_type_log_prob,
             gov_action_type_mask,
+            tech_action_type,
+            tech_action_type_log_prob,
+            tech_action_type_mask,
             mask,
             bad_mask,
             reward,
@@ -303,6 +369,7 @@ class Buffer:
         self.others_player_input[self.step + 1] = others_player.copy()
         self.unit_input[self.step + 1] = unit.copy()
         self.city_input[self.step + 1] = city.copy()
+        self.dipl_input[self.step + 1] = dipl.copy()
         self.others_unit_input[self.step + 1] = others_unit.copy()
         self.others_city_input[self.step + 1] = others_city.copy()
         self.map_input[self.step + 1] = map.copy()
@@ -327,9 +394,18 @@ class Buffer:
         self.unit_action_type_output[self.step] = unit_action_type.copy()
         self.unit_action_type_log_probs[self.step] = unit_action_type_log_prob.copy()
         self.unit_action_type_masks[self.step + 1] = unit_action_type_mask.copy()
+        self.dipl_id_output[self.step] = dipl_id.copy()
+        self.dipl_id_log_probs[self.step] = dipl_id_log_prob.copy()
+        self.dipl_id_masks[self.step + 1] = dipl_id_mask.copy()
+        self.dipl_action_type_output[self.step] = dipl_action_type.copy()
+        self.dipl_action_type_log_probs[self.step] = dipl_action_type_log_prob.copy()
+        self.dipl_action_type_masks[self.step + 1] = dipl_action_type_mask.copy()
         self.gov_action_type_output[self.step] = gov_action_type.copy()
         self.gov_action_type_log_probs[self.step] = gov_action_type_log_prob.copy()
         self.gov_action_type_masks[self.step + 1] = gov_action_type_mask.copy()
+        self.tech_action_type_output[self.step] = tech_action_type.copy()
+        self.tech_action_type_log_probs[self.step] = tech_action_type_log_prob.copy()
+        self.tech_action_type_masks[self.step + 1] = tech_action_type_mask.copy()
         self.masks[self.step + 1] = mask.copy()
         self.bad_masks[self.step + 1] = bad_mask.copy()
         self.rewards[self.step] = reward.copy()
@@ -344,6 +420,7 @@ class Buffer:
         self.others_player_input[0] = self.others_player_input[-1].copy()
         self.unit_input[0] = self.unit_input[-1].copy()
         self.city_input[0] = self.city_input[-1].copy()
+        self.dipl_input[0] = self.dipl_input[-1].copy()
         self.others_unit_input[0] = self.others_unit_input[-1].copy()
         self.others_city_input[0] = self.others_city_input[-1].copy()
         self.map_input[0] = self.map_input[-1].copy()
@@ -358,7 +435,10 @@ class Buffer:
         self.city_action_type_masks[0] = self.city_action_type_masks[-1].copy()
         self.unit_id_masks[0] = self.unit_id_masks[-1].copy()
         self.unit_action_type_masks[0] = self.unit_action_type_masks[-1].copy()
+        self.dipl_id_masks[0] = self.dipl_id_masks[-1].copy()
+        self.dipl_action_type_masks[0] = self.dipl_action_type_masks[-1].copy()
         self.gov_action_type_masks[0] = self.gov_action_type_masks[-1].copy()
+        self.tech_action_type_masks[0] = self.tech_action_type_masks[-1].copy()
         self.masks[0] = self.masks[-1].copy()
         self.bad_masks[0] = self.bad_masks[-1].copy()
 
@@ -490,6 +570,7 @@ class Buffer:
             others_player_batch = _flatten(T, N, self.others_player_input[:-1, ids])
             unit_batch = _flatten(T, N, self.unit_input[:-1, ids])
             city_batch = _flatten(T, N, self.city_input[:-1, ids])
+            dipl_batch = _flatten(T, N, self.dipl_input[:-1, ids])
             others_unit_batch = _flatten(T, N, self.others_unit_input[:-1, ids])
             others_city_batch = _flatten(T, N, self.others_city_input[:-1, ids])
             map_batch = _flatten(T, N, self.map_input[:-1, ids])
@@ -533,12 +614,31 @@ class Buffer:
             unit_action_type_masks_batch = _flatten(
                 T, N, self.unit_action_type_masks[:-1, ids]
             )
+            dipl_id_batch = _flatten(T, N, self.dipl_id_output[:, ids])
+            old_dipl_id_log_probs_batch = _flatten(T, N, self.dipl_id_log_probs[:, ids])
+            dipl_id_masks_batch = _flatten(T, N, self.dipl_id_masks[:-1, ids])
+            dipl_action_type_batch = _flatten(
+                T, N, self.dipl_action_type_output[:, ids]
+            )
+            old_dipl_action_type_log_probs_batch = _flatten(
+                T, N, self.dipl_action_type_log_probs[:, ids]
+            )
+            dipl_action_type_masks_batch = _flatten(
+                T, N, self.dipl_action_type_masks[:-1, ids]
+            )
             gov_action_type_batch = _flatten(T, N, self.gov_action_type_output[:, ids])
             old_gov_action_type_log_probs_batch = _flatten(
                 T, N, self.gov_action_type_log_probs[:, ids]
             )
             gov_action_type_masks_batch = _flatten(
                 T, N, self.gov_action_type_masks[:-1, ids]
+            )
+            tech_action_type_batch = _flatten(T, N, self.tech_action_type_output[:, ids])
+            old_tech_action_type_log_probs_batch = _flatten(
+                T, N, self.tech_action_type_log_probs[:, ids]
+            )
+            tech_action_type_masks_batch = _flatten(
+                T, N, self.tech_action_type_masks[:-1, ids]
             )
             masks_batch = _flatten(T, N, self.masks[:-1, ids])
             bad_masks_batch = _flatten(T, N, self.bad_masks[:-1, ids])
@@ -551,6 +651,7 @@ class Buffer:
                 others_player_batch,
                 unit_batch,
                 city_batch,
+                dipl_batch,
                 others_unit_batch,
                 others_city_batch,
                 map_batch,
@@ -578,9 +679,18 @@ class Buffer:
                 unit_action_type_batch,
                 old_unit_action_type_log_probs_batch,
                 unit_action_type_masks_batch,
+                dipl_id_batch,
+                old_dipl_id_log_probs_batch,
+                dipl_id_masks_batch,
+                dipl_action_type_batch,
+                old_dipl_action_type_log_probs_batch,
+                dipl_action_type_masks_batch,
                 gov_action_type_batch,
                 old_gov_action_type_log_probs_batch,
                 gov_action_type_masks_batch,
+                tech_action_type_batch,
+                old_tech_action_type_log_probs_batch,
+                tech_action_type_masks_batch,
                 masks_batch,
                 bad_masks_batch,
             )

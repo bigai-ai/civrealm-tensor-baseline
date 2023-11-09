@@ -125,8 +125,14 @@ class Runner:
                         unit_id_log_prob,
                         unit_action_type,
                         unit_action_type_log_prob,
+                        dipl_id,
+                        dipl_id_log_prob,
+                        dipl_action_type,
+                        dipl_action_type_log_prob,
                         gov_action_type,
                         gov_action_type_log_prob,
+                        tech_action_type,
+                        tech_action_type_log_prob,
                         value_pred,
                         rnn_hidden_state,
                     ) = self.algo.agent(
@@ -135,6 +141,7 @@ class Runner:
                         self.buffer.others_player_input[step],
                         self.buffer.unit_input[step],
                         self.buffer.city_input[step],
+                        self.buffer.dipl_input[step],
                         self.buffer.others_unit_input[step],
                         self.buffer.others_city_input[step],
                         self.buffer.map_input[step],
@@ -148,7 +155,10 @@ class Runner:
                         self.buffer.city_action_type_masks[step],
                         self.buffer.unit_id_masks[step],
                         self.buffer.unit_action_type_masks[step],
+                        self.buffer.dipl_id_masks[step],
+                        self.buffer.dipl_action_type_masks[step],
                         self.buffer.gov_action_type_masks[step],
+                        self.buffer.tech_action_type_masks[step],
                         self.buffer.rnn_hidden_states[
                             step
                         ],  # use previous rnn hidden state
@@ -166,8 +176,14 @@ class Runner:
                 unit_id_log_prob = _t2n(unit_id_log_prob)
                 unit_action_type = _t2n(unit_action_type)
                 unit_action_type_log_prob = _t2n(unit_action_type_log_prob)
+                dipl_id = _t2n(dipl_id)
+                dipl_id_log_prob = _t2n(dipl_id_log_prob)
+                dipl_action_type = _t2n(dipl_action_type)
+                dipl_action_type_log_prob = _t2n(dipl_action_type_log_prob)
                 gov_action_type = _t2n(gov_action_type)
                 gov_action_type_log_prob = _t2n(gov_action_type_log_prob)
+                tech_action_type = _t2n(tech_action_type)
+                tech_action_type_log_prob = _t2n(tech_action_type_log_prob)
                 value_pred = _t2n(value_pred)
                 rnn_hidden_state = _t2n(rnn_hidden_state)
 
@@ -178,7 +194,10 @@ class Runner:
                         "city_action_type": city_action_type,
                         "unit_id": unit_id,
                         "unit_action_type": unit_action_type,
+                        "dipl_id": dipl_id,
+                        "dipl_action_type": dipl_action_type,
                         "gov_action_type": gov_action_type,
+                        "tech_action_type": tech_action_type,
                     }
                 )  # no info at the moment
 
@@ -205,6 +224,7 @@ class Runner:
                     obs["others_player"],
                     obs["unit"],
                     obs["city"],
+                    obs["dipl"],
                     obs["others_unit"],
                     obs["others_city"],
                     obs["map"],
@@ -229,9 +249,18 @@ class Runner:
                     unit_action_type,
                     unit_action_type_log_prob,
                     obs["unit_action_type_mask"],
+                    dipl_id,
+                    dipl_id_log_prob,
+                    obs["dipl_id_mask"],
+                    dipl_action_type,
+                    dipl_action_type_log_prob,
+                    obs["dipl_action_type_mask"],
                     gov_action_type,
                     gov_action_type_log_prob,
                     obs["gov_action_type_mask"],
+                    tech_action_type,
+                    tech_action_type_log_prob,
+                    obs["tech_action_type_mask"],
                     mask,
                     bad_mask,
                     reward,
@@ -279,6 +308,7 @@ class Runner:
         self.buffer.others_player_input[0] = obs["others_player"].copy()
         self.buffer.unit_input[0] = obs["unit"].copy()
         self.buffer.city_input[0] = obs["city"].copy()
+        self.buffer.dipl_input[0] = obs["dipl"].copy()
         self.buffer.others_unit_input[0] = obs["others_unit"].copy()
         self.buffer.others_city_input[0] = obs["others_city"].copy()
         self.buffer.map_input[0] = obs["map"].copy()
@@ -292,7 +322,10 @@ class Runner:
         self.buffer.city_action_type_masks[0] = obs["city_action_type_mask"].copy()
         self.buffer.unit_id_masks[0] = obs["unit_id_mask"].copy()
         self.buffer.unit_action_type_masks[0] = obs["unit_action_type_mask"].copy()
+        self.buffer.dipl_id_masks[0] = obs["dipl_id_mask"].copy()
+        self.buffer.dipl_action_type_masks[0] = obs["dipl_action_type_mask"].copy()
         self.buffer.gov_action_type_masks[0] = obs["gov_action_type_mask"].copy()
+        self.buffer.tech_action_type_masks[0] = obs["tech_action_type_mask"].copy()
 
     @torch.no_grad()
     def compute(self):
@@ -307,8 +340,14 @@ class Runner:
             unit_id_log_prob,
             unit_action_type,
             unit_action_type_log_prob,
+            dipl_id,
+            dipl_id_log_prob,
+            dipl_action_type,
+            dipl_action_type_log_prob,
             gov_action_type,
             gov_action_type_log_prob,
+            tech_action_type,
+            tech_action_type_log_prob,
             value_pred,
             rnn_hidden_state,
         ) = self.algo.agent(
@@ -317,6 +356,7 @@ class Runner:
             self.buffer.others_player_input[-1],
             self.buffer.unit_input[-1],
             self.buffer.city_input[-1],
+            self.buffer.dipl_input[-1],
             self.buffer.others_unit_input[-1],
             self.buffer.others_city_input[-1],
             self.buffer.map_input[-1],
@@ -330,7 +370,10 @@ class Runner:
             self.buffer.city_action_type_masks[-1],
             self.buffer.unit_id_masks[-1],
             self.buffer.unit_action_type_masks[-1],
+            self.buffer.dipl_id_masks[-1],
+            self.buffer.dipl_action_type_masks[-1],
             self.buffer.gov_action_type_masks[-1],
+            self.buffer.tech_action_type_masks[-1],
             self.buffer.rnn_hidden_states[-1],  # use previous rnn hidden state
             self.buffer.masks[-1],
             deterministic=False,

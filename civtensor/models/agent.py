@@ -38,6 +38,7 @@ class Agent(nn.Module):
         ]  # or Sequence?
         self.unit_dim = self.observation_spaces["unit"].shape[1]  # or Sequence?
         self.city_dim = self.observation_spaces["city"].shape[1]  # or Sequence?
+        self.dipl_dim = self.observation_spaces["dipl"].shape[1]  # or Sequence?
         self.others_unit_dim = self.observation_spaces["others_unit"].shape[
             1
         ]  # or Sequence?
@@ -50,7 +51,9 @@ class Agent(nn.Module):
         self.actor_type_dim = self.action_spaces["actor_type"].n
         self.city_action_type_dim = self.action_spaces["city_action_type"].n
         self.unit_action_type_dim = self.action_spaces["unit_action_type"].n
+        self.dipl_action_type_dim = self.action_spaces["dipl_action_type"].n
         self.gov_action_type_dim = self.action_spaces["gov_action_type"].n
+        self.tech_action_type_dim = self.action_spaces["tech_action_type"].n
 
         # obtain hidden dimensions
         self.hidden_dim = args["hidden_dim"]  # 256
@@ -93,6 +96,14 @@ class Agent(nn.Module):
             self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
         )
 
+        self.dipl_embedding = nn.Sequential(
+            nn.Linear(self.dipl_dim, self.hidden_dim), nn.ReLU()
+        )
+
+        self.dipl_encoder = TransformerEncoder(
+            self.hidden_dim, self.hidden_dim, self.n_head, self.n_layers, self.drop_prob
+        )
+
         self.others_unit_embedding = nn.Sequential(
             nn.Linear(self.others_unit_dim, self.hidden_dim), nn.ReLU()
         )
@@ -131,7 +142,7 @@ class Agent(nn.Module):
 
         # initialize rnn.
         self.rnn = RNNLayer(
-            8 * self.hidden_dim,
+            9 * self.hidden_dim,
             self.rnn_hidden_dim,
             self.n_rnn_layers,
             self.initialization_method,
@@ -152,6 +163,8 @@ class Agent(nn.Module):
 
         self.unit_id_head = PointerNetwork(self.hidden_dim, self.rnn_hidden_dim)
 
+        self.dipl_id_head = PointerNetwork(self.hidden_dim, self.rnn_hidden_dim)
+
         self.city_action_head = Categorical(
             self.rnn_hidden_dim + self.hidden_dim,
             self.city_action_type_dim,
@@ -166,9 +179,23 @@ class Agent(nn.Module):
             self.gain,
         )
 
+        self.dipl_action_head = Categorical(
+            self.rnn_hidden_dim + self.hidden_dim,
+            self.dipl_action_type_dim,
+            self.initialization_method,
+            self.gain,
+        )
+
         self.gov_action_head = Categorical(
             self.rnn_hidden_dim,
             self.gov_action_type_dim,
+            self.initialization_method,
+            self.gain,
+        )
+
+        self.tech_action_head = Categorical(
+            self.rnn_hidden_dim,
+            self.tech_action_type_dim,
             self.initialization_method,
             self.gain,
         )
@@ -182,6 +209,7 @@ class Agent(nn.Module):
         others_player,
         unit,
         city,
+        dipl,
         others_unit,
         others_city,
         map,
@@ -240,6 +268,14 @@ class Agent(nn.Module):
             city_embedding, city_mask
         )  # (batch_size, n_max_city, hidden_dim)
 
+        batch_size, n_max_dipl, dipl_dim = dipl.shape
+        dipl_embedding = self.dipl_embedding(dipl.view(-1, self.dipl_dim)).view(
+            batch_size, n_max_dipl, self.hidden_dim
+        )  # (batch_size, n_max_dipl, hidden_dim)
+        dipl_encoded = self.dipl_encoder(
+            dipl_embedding, others_player_mask
+        )  # (batch_size, n_max_dipl, hidden_dim)
+
         batch_size, n_max_others_unit, others_unit_dim = others_unit.shape
         others_unit_embedding = self.others_unit_embedding(
             others_unit.view(-1, self.others_unit_dim)
@@ -277,6 +313,10 @@ class Agent(nn.Module):
             city_mask, dim=1
         ) + self.eps)
 
+        dipl_global_encoding = torch.sum(dipl_encoded * others_player_mask, dim=1) / (torch.sum(
+            others_player_mask, dim=1
+        ) + self.eps)
+
         others_unit_global_encoding = torch.sum(
             others_unit_encoded * others_unit_mask, dim=1
         ) / (torch.sum(others_unit_mask, dim=1) + self.eps)
@@ -292,6 +332,7 @@ class Agent(nn.Module):
                 others_player_global_encoding,
                 unit_global_encoding,
                 city_global_encoding,
+                dipl_global_encoding,
                 others_unit_global_encoding,
                 others_city_global_encoding,
                 map_encoded,
@@ -303,7 +344,7 @@ class Agent(nn.Module):
             global_encoding, src_mask=None
         )  # (batch_size, 8, hidden_dim)
 
-        return global_encoding_processed, unit_encoded, city_encoded
+        return global_encoding_processed, unit_encoded, city_encoded, dipl_encoded
 
     def forward(
         self,
@@ -312,6 +353,7 @@ class Agent(nn.Module):
         others_player,
         unit,
         city,
+        dipl,
         others_unit,
         others_city,
         map,
@@ -325,7 +367,10 @@ class Agent(nn.Module):
         city_action_type_mask,
         unit_id_mask,
         unit_action_type_mask,
+        dipl_id_mask,
+        dipl_action_type_mask,
         gov_action_type_mask,
+        tech_action_type_mask,
         rnn_hidden_state,
         mask,  # TODO check whether logic related to mask is correct
         deterministic,
@@ -360,6 +405,7 @@ class Agent(nn.Module):
         others_player = torch.from_numpy(others_player).to(self.device)
         unit = torch.from_numpy(unit).to(self.device)
         city = torch.from_numpy(city).to(self.device)
+        dipl = torch.from_numpy(dipl).to(self.device)
         others_unit = torch.from_numpy(others_unit).to(self.device)
         others_city = torch.from_numpy(others_city).to(self.device)
         map = torch.from_numpy(map).to(self.device)
@@ -373,17 +419,21 @@ class Agent(nn.Module):
         city_action_type_mask = torch.from_numpy(city_action_type_mask).to(self.device)
         unit_id_mask = torch.from_numpy(unit_id_mask).to(self.device)
         unit_action_type_mask = torch.from_numpy(unit_action_type_mask).to(self.device)
+        dipl_id_mask = torch.from_numpy(dipl_id_mask).to(self.device)
+        dipl_action_type_mask = torch.from_numpy(dipl_action_type_mask).to(self.device)
         gov_action_type_mask = torch.from_numpy(gov_action_type_mask).to(self.device)
+        tech_action_type_mask = torch.from_numpy(tech_action_type_mask).to(self.device)
         rnn_hidden_state = torch.from_numpy(rnn_hidden_state).to(self.device)
         mask = torch.from_numpy(mask).to(self.device)
 
         # encoding step
-        global_encoding_processed, unit_encoded, city_encoded = self.encoding_step(
+        global_encoding_processed, unit_encoded, city_encoded, dipl_encoded = self.encoding_step(
             rules,
             player,
             others_player,
             unit,
             city,
+            dipl,
             others_unit,
             others_city,
             map,
@@ -410,10 +460,6 @@ class Agent(nn.Module):
 
         # action step
         # actor type head
-        # TODO: Remove this after tech and dipl env to be added
-        # WARN: This must be deleted!!!!
-        actor_type_mask[:,3] = 0
-        actor_type_mask[:,4] = 0
         actor_type_distribution = self.actor_type_head(rnn_out, actor_type_mask)
 
         actor_type = (
@@ -467,6 +513,28 @@ class Agent(nn.Module):
             unit_action_type
         )
 
+        # dipl id head
+        dipl_id, dipl_id_log_prob, dipl_chosen_encoded = self.dipl_id_head(
+            rnn_out, dipl_encoded, dipl_id_mask, deterministic
+        )  # (batch_size, 1), (batch_size, hidden_dim)
+
+        # dipl action type head
+        dipl_action_input = torch.cat([rnn_out, dipl_chosen_encoded], dim=-1)
+        chosen_dipl_action_type_mask = dipl_action_type_mask[
+            torch.arange(batch_size), dipl_id.squeeze(), :
+        ]  # TODO: check whether gradient is correct
+        dipl_action_type_distribution = self.dipl_action_head(
+            dipl_action_input, chosen_dipl_action_type_mask
+        )
+        dipl_action_type = (
+            dipl_action_type_distribution.mode()
+            if deterministic
+            else dipl_action_type_distribution.sample()
+        )
+        dipl_action_type_log_prob = dipl_action_type_distribution.log_probs(
+            dipl_action_type
+        )
+
         # gov action type head
         gov_action_type_distribution = self.gov_action_head(
             rnn_out, gov_action_type_mask
@@ -480,6 +548,19 @@ class Agent(nn.Module):
             gov_action_type
         )
 
+        # tech action type head
+        tech_action_type_distribution = self.tech_action_head(
+            rnn_out, tech_action_type_mask
+        )
+        tech_action_type = (
+            tech_action_type_distribution.mode()
+            if deterministic
+            else tech_action_type_distribution.sample()
+        )
+        tech_action_type_log_prob = tech_action_type_distribution.log_probs(
+            tech_action_type
+        )
+
         return (
             actor_type,
             actor_type_log_prob,
@@ -491,8 +572,14 @@ class Agent(nn.Module):
             unit_id_log_prob,
             unit_action_type,
             unit_action_type_log_prob,
+            dipl_id,
+            dipl_id_log_prob,
+            dipl_action_type,
+            dipl_action_type_log_prob,
             gov_action_type,
             gov_action_type_log_prob,
+            tech_action_type,
+            tech_action_type_log_prob,
             value_pred,
             rnn_hidden_state,
         )
@@ -504,6 +591,7 @@ class Agent(nn.Module):
         others_player_batch,  # (episode_length * num_envs_per_batch, n_max_others_player, others_player_dim)
         unit_batch,  # (episode_length * num_envs_per_batch, n_max_unit, unit_dim)
         city_batch,  # (episode_length * num_envs_per_batch, n_max_city, city_dim)
+        dipl_batch,  # (episode_length * num_envs_per_batch, n_max_dipl, dipl_dim)
         others_unit_batch,  # (episode_length * num_envs_per_batch, n_max_others_unit, others_unit_dim)
         others_city_batch,  # (episode_length * num_envs_per_batch, n_max_others_city, others_city_dim)
         map_batch,  # (episode_length * num_envs_per_batch, x_size, y_size, map_channels)
@@ -523,17 +611,24 @@ class Agent(nn.Module):
         unit_id_masks_batch,  # (episode_length * num_envs_per_batch, n_max_unit, 1)
         unit_action_type_batch,  # (episode_length * num_envs_per_batch, 1)
         unit_action_type_masks_batch,  # (episode_length * num_envs_per_batch, unit_action_type_dim)
+        dipl_id_batch,  # (episode_length * num_envs_per_batch, 1)
+        dipl_id_masks_batch,  # (episode_length * num_envs_per_batch, n_max_dipl, 1)
+        dipl_action_type_batch,  # (episode_length * num_envs_per_batch, 1)
+        dipl_action_type_masks_batch,  # (episode_length * num_envs_per_batch, dipl_action_type_dim)
         gov_action_type_batch,  # (episode_length * num_envs_per_batch, 1)
         gov_action_type_masks_batch,  # (episode_length * num_envs_per_batch, gov_action_type_dim)
+        tech_action_type_batch,  # (episode_length * num_envs_per_batch, 1)
+        tech_action_type_masks_batch,  # (episode_length * num_envs_per_batch, tech_action_type_dim)
         masks_batch,  # (episode_length * num_envs_per_batch, 1)
     ):
         # encoding step
-        global_encoding_processed, unit_encoded, city_encoded = self.encoding_step(
+        global_encoding_processed, unit_encoded, city_encoded, dipl_encoded = self.encoding_step(
             rules_batch,
             player_batch,
             others_player_batch,
             unit_batch,
             city_batch,
+            dipl_batch,
             others_unit_batch,
             others_city_batch,
             map_batch,
@@ -606,6 +701,27 @@ class Agent(nn.Module):
         )
         unit_action_type_dist_entropy = unit_action_type_distribution.entropy().mean()
 
+        # dipl id head
+        (
+            dipl_id_log_probs_batch,
+            dipl_chosen_encoded,
+        ) = self.dipl_id_head.evaluate_actions(
+            rnn_out, dipl_encoded, dipl_id_masks_batch, dipl_id_batch
+        )  # (batch_size, 1), (batch_size, hidden_dim)
+
+        # dipl action type head
+        dipl_action_input = torch.cat([rnn_out, dipl_chosen_encoded], dim=-1)
+        chosen_dipl_action_type_mask = dipl_action_type_masks_batch[
+            torch.arange(batch_size), dipl_id_batch.squeeze(), :
+        ]  # TODO: check whether gradient is correct
+        dipl_action_type_distribution = self.dipl_action_head(
+            dipl_action_input, chosen_dipl_action_type_mask
+        )
+        dipl_action_type_log_probs_batch = dipl_action_type_distribution.log_probs(
+            dipl_action_type_batch
+        )
+        dipl_action_type_dist_entropy = dipl_action_type_distribution.entropy().mean()
+
         # gov action type head
         gov_action_type_distribution = self.gov_action_head(
             rnn_out, gov_action_type_masks_batch
@@ -614,6 +730,15 @@ class Agent(nn.Module):
             gov_action_type_batch
         )
         gov_action_type_dist_entropy = gov_action_type_distribution.entropy().mean()
+
+        # tech action type head
+        tech_action_type_distribution = self.tech_action_head(
+            rnn_out, tech_action_type_masks_batch
+        )
+        tech_action_type_log_probs_batch = tech_action_type_distribution.log_probs(
+            tech_action_type_batch
+        )
+        tech_action_type_dist_entropy = tech_action_type_distribution.entropy().mean()
 
         return (
             actor_type_log_probs_batch,
@@ -624,7 +749,12 @@ class Agent(nn.Module):
             unit_id_log_probs_batch,
             unit_action_type_log_probs_batch,
             unit_action_type_dist_entropy,
+            dipl_id_log_probs_batch,
+            dipl_action_type_log_probs_batch,
+            dipl_action_type_dist_entropy,
             gov_action_type_log_probs_batch,
             gov_action_type_dist_entropy,
+            tech_action_type_log_probs_batch,
+            tech_action_type_dist_entropy,
             value_preds_batch,
         )

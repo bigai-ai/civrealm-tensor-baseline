@@ -20,12 +20,13 @@ class TensorBaselineEnv:
         task_type = self.task_args[0]
         if task_type == "fullgame":
             self.tensor_env = ParallelTensorEnv(
-                "freeciv/FreecivTensor-v0", parallel_number,
+                "freeciv/FreecivTensor-v0",
+                parallel_number,
             )
         elif task_type in MinitaskType.list() or task_type == "random_minitask":
             task = {} if task_type == "random_minitask" else {"type": task_type}
             if len(self.task_args) > 1:
-                assert self.task_args[1] in ['easy', 'normal', 'hard']
+                assert self.task_args[1] in ["easy", "normal", "hard"]
                 task["level"] = self.task_args[1]
             if len(self.task_args) > 2:
                 task["id"] = self.task_args[2]
@@ -50,6 +51,7 @@ class TensorBaselineEnv:
             "player",
             "city",
             "unit",
+            "dipl",
             "others_player",
             "others_unit",
             "others_city",
@@ -63,7 +65,10 @@ class TensorBaselineEnv:
             "city_action_type_mask",
             "unit_id_mask",
             "unit_action_type_mask",
+            "dipl_id_mask",
+            "dipl_action_type_mask",
             "gov_action_type_mask",
+            "tech_action_type_mask",
         ]:
             obs[key] = np.stack([obs_single[key] for obs_single in obs_ori])
         return obs
@@ -75,7 +80,10 @@ class TensorBaselineEnv:
             "city_action_type",
             "unit_id",
             "unit_action_type",
+            "dipl_id",
+            "dipl_action_type",
             "gov_action_type",
+            "tech_action_type"
         ]
         batch_size = actions_ori["actor_type"].shape[0]
         actions = []
@@ -90,6 +98,7 @@ class TensorBaselineEnv:
             "player",
             "city",
             "unit",
+            "dipl",
             "others_player",
             "others_unit",
             "others_city",
@@ -103,7 +112,10 @@ class TensorBaselineEnv:
             "city_action_type_mask",
             "unit_id_mask",
             "unit_action_type_mask",
+            "dipl_id_mask",
+            "dipl_action_type_mask",
             "gov_action_type_mask",
+            "tech_action_type_mask",
         ]:
             obs[key] = np.stack([obs_single[key] for obs_single in obs_ori])
         rew = np.stack(rew_ori)
