@@ -52,5 +52,5 @@ algo_args:
     use_proper_time_limits: true
     use_valuenorm: true
 env_args:
-  task_name: development_transport normal
+  task_name: battle_medieval easy
 run_times: 3
