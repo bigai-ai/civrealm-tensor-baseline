@@ -13,10 +13,9 @@ setup(
         "pyyaml>=5.3.1",
         "tensorboard",
         "setproctitle",
+        "tensorboardX@https://github.com/DumbMice/tensorboardX.git@master",
     ],
     setup_requires=[
-        "tensorboardX>=2.2.1; platform_system!='windows'",
-        "tensorboardX@https://github.com/DumbMice/tensorboardX.git@master ; platform_system == 'windows'",
     ],
     classifiers=[
         "License :: OSI Approved :: MIT License",
