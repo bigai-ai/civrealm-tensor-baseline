@@ -46,7 +46,7 @@ algo_args:
     model_dir: null
     n_eval_rollout_threads: 1
     n_rollout_threads: 8
-    num_env_steps: 20000
+    num_env_steps: 40000
     use_eval: false
     use_linear_lr_decay: false
     use_proper_time_limits: true
