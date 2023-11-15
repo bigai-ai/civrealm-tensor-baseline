@@ -13,7 +13,7 @@ setup(
         "pyyaml>=5.3.1",
         "tensorboard",
         "setproctitle",
-        "tensorboardX@https://github.com/DumbMice/tensorboardX.git@master",
+        "tensorboardX@https://github.com/lanpa/tensorboardX.git@master",
     ],
     setup_requires=[
     ],
