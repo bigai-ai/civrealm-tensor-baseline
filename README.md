@@ -37,6 +37,13 @@ where `$civrealm-dir` should specify the path of your local **civrelam** repo.
 freeciv-tensor-baseline/examples/results 
 ```
 
+To view your results on tensorboard, alter the following script to match your path structure and run
+```sh
+cd examples/results/freeciv_tensor_env/$game_type/ppo/installtest/seed-XXXXXXXXX
+# where $game_type = fullgame or minitask
+tensorboard logs/
+```
+then the results should be visible in the browser.
 
 ### Single Run
 Edit `freeciv-tensor-baseline/civtensor/configs/envs_cfgs/freeciv_tensor_env.yaml`
