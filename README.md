@@ -13,7 +13,7 @@ cd examples
 ./train.sh # or python train.py
 ```
 ## Fullgame
-Edit `civtensor/configs/envs_cfgs/freeciv_tensor_env.yaml`
+Edit `freeciv-tensor-baseline/civtensor/configs/envs_cfgs/freeciv_tensor_env.yaml`
 
 Change `task_name` to `fullgame`
 
@@ -25,7 +25,7 @@ task_name: fullgame
 
 ### Run all minitasks
 
-examples/run.py will run all minitasks specified in `examples/run_configs` including $`12\text{ types}\times 3\text{ levels} = 36 \text{ runs}`$
+freeciv-tensor-baseline/examples/run.py will run all minitasks specified in `examples/run_configs` including $`12\text{ types}\times 3\text{ levels} = 36 \text{ runs}`$
 ```sh
 cd exmaples
 python run.py --webdir $freeciv-web-dr
@@ -33,12 +33,12 @@ python run.py --webdir $freeciv-web-dr
 
 ### Expreiment results are in
 ```sh
-examples/results 
+freeciv-tensor-baseline/examples/results 
 ```
 
 
 ### Single Run
-Edit `civtensor/configs/envs_cfgs/freeciv_tensor_env.yaml`
+Edit `freeciv-tensor-baseline/civtensor/configs/envs_cfgs/freeciv_tensor_env.yaml`
 
 Change `task_name` to `random_minitask`  or any task name in the list of MinitaskType.list()
 
@@ -67,7 +67,7 @@ task_name: development_build_city easy 100 # type level id
 
 
 # Customize
-Training parameters could be adjusted in `civtensor/configs/algos_cfgs/ppo.yaml`
+Training parameters could be adjusted in `freeciv-tensor-baseline/civtensor/configs/algos_cfgs/ppo.yaml`
 
 For training minitask tensor baseline, we used the following default setting:
 
