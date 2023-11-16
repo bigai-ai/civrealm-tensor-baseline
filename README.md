@@ -30,7 +30,7 @@ freeciv-tensor-baseline/examples/run.py will run all minitasks specified in `exa
 cd exmaples
 python run.py --webdir $civrealm-dir
 ```
-where `$civrealm-dir` should specify the path of your local **civrelam** repo.
+where `$civrealm-dir` should specify the path of your local **civrealm** repo.
 
 ### Expreiment results are in
 ```sh
