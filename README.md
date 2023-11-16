@@ -3,7 +3,6 @@
 ## Quick Start
 First install
 ```
-git clone ssh://git@gitlab.mybigai.ac.cn:2222/civilization/freeciv-tensor-baseline.git
 cd freeciv-tensor-baseline
 pip install -e .
 ```
@@ -32,10 +31,9 @@ cd exmaples
 python run.py --webdir $freeciv-web-dr
 ```
 
-### Share Your Expreiment Results 
+### Expreiment results are in
 ```sh
-sudo mount 10.1.101.98:/home/ybc/nfs ~/nfs_test
-cp -r ./examples/results ~/nfs_test/.
+examples/results 
 ```
 
 
@@ -93,8 +91,8 @@ train:
 
 # Notes
 
-- Remember to set `max_turns` to `100` in freeciv-gym for early phase only training.
-- On 3090Ti GPU, I think `n_rollout_threads: 5` and `episode_length: 200` will reach the maximum of its CUDA memory.
+- Remember to set `max_turns` to `100` in Civrealm for early phase only training.
+- On 3090Ti GPU, we believe `n_rollout_threads: 5` and `episode_length: 200` will reach the maximum of its CUDA memory.
 
 
 
@@ -176,7 +174,3 @@ action_spaces = {
 ### Tensor Env
 
 observation space keys = ['rules', 'map', 'player', 'city', 'unit', 'others_player', 'others_unit', 'others_city', 'unit_mask', 'city_mask', 'others_unit_mask', 'others_city_mask', 'others_player_mask', 'actor_type_mask', 'city_id_mask', 'city_action_type_mask', 'unit_id_mask', 'unit_action_type_mask', 'gov_action_type_mask']
-
-# Acknowledgement
-
-This tensor baseline is developed based on https://github.com/PKU-MARL/HARL, please feel free to give it a star!
