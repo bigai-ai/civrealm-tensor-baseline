@@ -29,7 +29,7 @@ class TensorBaselineEnv:
                 assert self.task_args[1] in ["easy", "normal", "hard"]
                 task["level"] = self.task_args[1]
             if len(self.task_args) > 2:
-                task["id"] = self.task_args[2]
+                task["id"] = int(self.task_args[2])
             self.tensor_env = ParallelTensorEnv(
                 "freeciv/FreecivTensorMinitask-v0",
                 parallel_number,
