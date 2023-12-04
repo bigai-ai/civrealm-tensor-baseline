@@ -14,6 +14,7 @@ class TensorBaselineEnv:
         ray.init(
             local_mode=False,
             runtime_env={"worker_process_setup_hook": ray_logger_setup},
+            ignore_reinit_error=True,
         )
         self.logger = ray_logger_setup()
         self.task_args = task.split(" ")
@@ -83,7 +84,7 @@ class TensorBaselineEnv:
             "dipl_id",
             "dipl_action_type",
             "gov_action_type",
-            "tech_action_type"
+            "tech_action_type",
         ]
         batch_size = actions_ori["actor_type"].shape[0]
         actions = []
