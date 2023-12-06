@@ -21,7 +21,7 @@ class TensorBaselineEnv:
         task_type = self.task_args[0]
         if task_type == "fullgame":
             self.tensor_env = ParallelTensorEnv(
-                "freeciv/FreecivTensor-v0",
+                "civrealm/FreecivTensor-v0",
                 parallel_number,
             )
         elif task_type in MinitaskType.list() or task_type == "random_minitask":
@@ -32,7 +32,7 @@ class TensorBaselineEnv:
             if len(self.task_args) > 2:
                 task["id"] = self.task_args[2]
             self.tensor_env = ParallelTensorEnv(
-                "freeciv/FreecivTensorMinitask-v0",
+                "civrealm/FreecivTensorMinitask-v0",
                 parallel_number,
                 minitask_pattern=task,
             )
