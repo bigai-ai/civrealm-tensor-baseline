@@ -106,27 +106,13 @@ class TbSummary:
         df["type"] = df["task"].apply(get_task_type)
         df["level"] = df["task"].apply(get_task_level)
 
-        # TODO: revert this after naval level is corrected
-
-        idx = (df["type"] == "battle_naval_modern") | (df["type"] == "battle_naval")
-        df.loc[idx, "level"] = df[idx]["level"].replace(
-            {"easy": "hard", "hard": "easy"}
-        )
-
         return df
 
     @property
     def fullgames(self):
         df = self.df[self.df["fullgame"] == True].drop(columns=["fullgame"])
 
-        # HACK: Mannly merge discontinued fullgame runs seed=[07985, 01543]
-        # df.loc[df["seed"] == "01543", "step"] += 109000
-        # df.loc[df["seed"] == "01543", ["seed", "time"]] = [
-        #     "07985",
-        #     df[df["seed"] == "07985"]["time"].unique()[0],
-        # ]
-        df.loc[df.seed == "07814","step"] -= 650000
-        return df[(df.seed == "07814") & (df.step>0)]
+        return df[(df.step > 0)]
 
     @staticmethod
     def plot_metrics(
@@ -184,7 +170,7 @@ class TbSummary:
 
         minitasks = minitasks[
             (minitasks["type"] == task_type) & (minitasks["tag"] == y_label)
-        ][["seed", "value","level", x_label]]
+        ][["seed", "value", "level", x_label]]
         self.plot_metrics(
             data=minitasks,
             x_label=x_label,
@@ -264,7 +250,7 @@ class TbSummary:
                 self.plot_fullgame(y_label=metric)
                 if save:
                     plt.tight_layout()
-                    plt.legend([],[], frameon=False)
+                    plt.legend([], [], frameon=False)
                     plt.savefig(
                         os.path.join(fig_dir, f"fullgame_{metric}.jpg"),
                         dpi=500,
@@ -276,6 +262,9 @@ class TbSummary:
 
 
 if __name__ == "__main__":
-    summary = TbSummary('~/nfs')
+    # Load from checkpoints
+    summary = TbSummary("./checkpoints")
+
+    # Plot minitask and fullgame result
     summary.plot_minitask_result()
     summary.plot_fullgame_result()
