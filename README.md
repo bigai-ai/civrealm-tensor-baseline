@@ -2,7 +2,7 @@
 This code base includes the tensor-based baseline agent for CivRealm. More documentation about the environment can be found [here](https://bigai-ai.github.io/civrealm/).
 
 ## Prepare
-Install `civrealm` from `https://github.com/bigai-ai/civrealm`.
+Install `civrealm` from the [official  CivRealm repo](https://github.com/bigai-ai/civrealm).
 ## Quick Start
 First install
 ```
