@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 setup(
     name="civtensor",
     version="1.0.0",
-    author="BIGAI-MAS",
+    author="",
     description="Freeciv Tensor Baseline",
     packages=find_packages(),
     license="MIT",
